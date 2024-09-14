@@ -1,12 +1,12 @@
 # Haru - A TUI Anime Tracker
 
 ## (Planned) Features
-[ ] Can track anime in the same way as popular trackers
-[ ] Works completely from the terminal
-[ ] Can import/export from most popular anime trackers
-[ ] Can search and add to list via MAL's API
-[ ] Saves data in a local database
-[ ] Can export/import in it's own format for backing up
+- [ ] Can track anime in the same way as popular trackers
+- [ ] Works completely from the terminal
+- [ ] Can import/export from most popular anime trackers
+- [ ] Can search and add to list via MAL's API
+- [ ] Saves data in a local database
+- [ ] Can export/import in it's own format for backing up
 
 ## Usage/Examples
 

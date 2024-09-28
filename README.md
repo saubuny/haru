@@ -6,7 +6,7 @@
 - [ ] Can import/export from most popular anime trackers
 - [ ] Can search and add to list via MAL's API
 - [ ] Saves data in a local database (in ~/.haru)
-- [ ] Can export/import in it's own format for backing up
+- [ ] Can backup database (maybe google drive or something? i dont know yet)
 
 ## Usage/Examples
 

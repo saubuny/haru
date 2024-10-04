@@ -7,6 +7,7 @@
 - [ ] Can search and add to list via MAL's API
 - [ ] Saves data in a local database (in ~/.haru)
 - [ ] Can backup database (maybe google drive or something? i dont know yet)
+- [ ] (Eventually) add manga support
 
 ## Usage/Examples
 

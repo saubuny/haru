@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/saubuny/haru/internal/database"
@@ -20,15 +23,155 @@ type appConfig struct {
 }
 
 type model struct {
-	choices  []string
-	cursor   int
-	selected map[int]struct{}
+	choices []string
+	cursor  int
+}
+
+type topAnimeResponse struct {
+	Data []struct {
+		MalID  int    `json:"mal_id"`
+		URL    string `json:"url"`
+		Images struct {
+			Jpg struct {
+				ImageURL      string `json:"image_url"`
+				SmallImageURL string `json:"small_image_url"`
+				LargeImageURL string `json:"large_image_url"`
+			} `json:"jpg"`
+			Webp struct {
+				ImageURL      string `json:"image_url"`
+				SmallImageURL string `json:"small_image_url"`
+				LargeImageURL string `json:"large_image_url"`
+			} `json:"webp"`
+		} `json:"images"`
+		Trailer struct {
+			YoutubeID string `json:"youtube_id"`
+			URL       string `json:"url"`
+			EmbedURL  string `json:"embed_url"`
+		} `json:"trailer"`
+		Approved bool `json:"approved"`
+		Titles   []struct {
+			Type  string `json:"type"`
+			Title string `json:"title"`
+		} `json:"titles"`
+		Title         string   `json:"title"`
+		TitleEnglish  string   `json:"title_english"`
+		TitleJapanese string   `json:"title_japanese"`
+		TitleSynonyms []string `json:"title_synonyms"`
+		Type          string   `json:"type"`
+		Source        string   `json:"source"`
+		Episodes      int      `json:"episodes"`
+		Status        string   `json:"status"`
+		Airing        bool     `json:"airing"`
+		Aired         struct {
+			From string `json:"from"`
+			To   string `json:"to"`
+			Prop struct {
+				From struct {
+					Day   int `json:"day"`
+					Month int `json:"month"`
+					Year  int `json:"year"`
+				} `json:"from"`
+				To struct {
+					Day   int `json:"day"`
+					Month int `json:"month"`
+					Year  int `json:"year"`
+				} `json:"to"`
+				String string `json:"string"`
+			} `json:"prop"`
+		} `json:"aired"`
+		Duration   string  `json:"duration"`
+		Rating     string  `json:"rating"`
+		Score      float64 `json:"score"`
+		ScoredBy   int     `json:"scored_by"`
+		Rank       int     `json:"rank"`
+		Popularity int     `json:"popularity"`
+		Members    int     `json:"members"`
+		Favorites  int     `json:"favorites"`
+		Synopsis   string  `json:"synopsis"`
+		Background string  `json:"background"`
+		Season     string  `json:"season"`
+		Year       int     `json:"year"`
+		Broadcast  struct {
+			Day      string `json:"day"`
+			Time     string `json:"time"`
+			Timezone string `json:"timezone"`
+			String   string `json:"string"`
+		} `json:"broadcast"`
+		Producers []struct {
+			MalID int    `json:"mal_id"`
+			Type  string `json:"type"`
+			Name  string `json:"name"`
+			URL   string `json:"url"`
+		} `json:"producers"`
+		Licensors []struct {
+			MalID int    `json:"mal_id"`
+			Type  string `json:"type"`
+			Name  string `json:"name"`
+			URL   string `json:"url"`
+		} `json:"licensors"`
+		Studios []struct {
+			MalID int    `json:"mal_id"`
+			Type  string `json:"type"`
+			Name  string `json:"name"`
+			URL   string `json:"url"`
+		} `json:"studios"`
+		Genres []struct {
+			MalID int    `json:"mal_id"`
+			Type  string `json:"type"`
+			Name  string `json:"name"`
+			URL   string `json:"url"`
+		} `json:"genres"`
+		ExplicitGenres []struct {
+			MalID int    `json:"mal_id"`
+			Type  string `json:"type"`
+			Name  string `json:"name"`
+			URL   string `json:"url"`
+		} `json:"explicit_genres"`
+		Themes []struct {
+			MalID int    `json:"mal_id"`
+			Type  string `json:"type"`
+			Name  string `json:"name"`
+			URL   string `json:"url"`
+		} `json:"themes"`
+		Demographics []struct {
+			MalID int    `json:"mal_id"`
+			Type  string `json:"type"`
+			Name  string `json:"name"`
+			URL   string `json:"url"`
+		} `json:"demographics"`
+	} `json:"data"`
+	Pagination struct {
+		LastVisiblePage int  `json:"last_visible_page"`
+		HasNextPage     bool `json:"has_next_page"`
+		Items           struct {
+			Count   int `json:"count"`
+			Total   int `json:"total"`
+			PerPage int `json:"per_page"`
+		} `json:"items"`
+	} `json:"pagination"`
 }
 
 func initialModel() model {
+	// show a table of top anime initially, the model will change to whatever type of content the user is searching for
+	c := &http.Client{Timeout: 1 * time.Second}
+	res, err := c.Get("https://api.jikan.moe/v4/top/anime")
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	var topAnime topAnimeResponse
+	err = json.NewDecoder(res.Body).Decode(&topAnime)
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	choices := make([]string, 0)
+	for _, anime := range topAnime.Data {
+		choices = append(choices, anime.Title)
+	}
+
 	return model{
-		choices:  []string{"Buy Carrots", "Buy Celery", "Buy whatever that is"},
-		selected: make(map[int]struct{}),
+		choices: choices,
 	}
 }
 
@@ -55,15 +198,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 
-		// The "enter" key and the spacebar (a literal space) toggle
-		// the selected state for the item that the cursor is pointing at.
-		case "enter", " ":
-			_, ok := m.selected[m.cursor]
-			if ok {
-				delete(m.selected, m.cursor)
-			} else {
-				m.selected[m.cursor] = struct{}{}
-			}
 		}
 	}
 
@@ -71,32 +205,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	// The header
-	s := "What should we buy at the market?\n\n"
+	s := "Here are the top anime\n\n"
 
-	// Iterate over our choices
 	for i, choice := range m.choices {
-
-		// Is the cursor pointing at this choice?
-		cursor := " " // no cursor
+		cursor := " "
 		if m.cursor == i {
-			cursor = ">" // cursor!
-		}
-
-		// Is this choice selected?
-		checked := " " // not selected
-		if _, ok := m.selected[i]; ok {
-			checked = "x" // selected!
+			cursor = ">"
 		}
 
 		// Render the row
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+		s += fmt.Sprintf("%s %s\n", cursor, choice)
 	}
 
-	// The footer
 	s += "\nPress q to quit.\n"
-
-	// Send the UI for rendering
 	return s
 }
 
@@ -128,7 +249,7 @@ func main() {
 	// 	log.Fatalf("Error: %v", err)
 	// }
 
-	p := tea.NewProgram(initialModel())
+	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("Error: %v", err)
 	}

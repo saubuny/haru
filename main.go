@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -14,8 +13,12 @@ import (
 
 	_ "embed"
 
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
+
+var baseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
 
 type appConfig struct {
 	DB  *database.Queries
@@ -23,8 +26,7 @@ type appConfig struct {
 }
 
 type model struct {
-	choices []string
-	cursor  int
+	table table.Model
 }
 
 type topAnimeResponse struct {
@@ -165,13 +167,37 @@ func initialModel() model {
 		log.Fatalf("Error: %v", err)
 	}
 
-	choices := make([]string, 0)
-	for _, anime := range topAnime.Data {
-		choices = append(choices, anime.Title)
+	columns := []table.Column{
+		{Title: "Name", Width: 40},
+		{Title: "Rating", Width: 40},
 	}
 
+	rows := make([]table.Row, 0)
+	for _, anime := range topAnime.Data {
+		rows = append(rows, table.Row{anime.Title, anime.Rating})
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(7),
+	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	t.SetStyles(s)
+
 	return model{
-		choices: choices,
+		table: t,
 	}
 }
 
@@ -180,45 +206,30 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
-
 	case tea.KeyMsg:
-
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "esc":
+			if m.table.Focused() {
+				m.table.Blur()
+			} else {
+				m.table.Focus()
+			}
+		case "q", "ctrl+c":
 			return m, tea.Quit
-
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-
-		case "down", "j":
-			if m.cursor < len(m.choices)-1 {
-				m.cursor++
-			}
-
+		case "enter":
+			return m, tea.Batch(
+				tea.Printf("Let's go to %s!", m.table.SelectedRow()[1]),
+			)
 		}
 	}
-
-	return m, nil
+	m.table, cmd = m.table.Update(msg)
+	return m, cmd
 }
 
 func (m model) View() string {
-	s := "Here are the top anime\n\n"
-
-	for i, choice := range m.choices {
-		cursor := " "
-		if m.cursor == i {
-			cursor = ">"
-		}
-
-		// Render the row
-		s += fmt.Sprintf("%s %s\n", cursor, choice)
-	}
-
-	s += "\nPress q to quit.\n"
-	return s
+	return baseStyle.Render(m.table.View()) + "\n " + m.table.HelpView() + "\n"
 }
 
 //go:embed sql/schema/schema.sql

@@ -13,12 +13,44 @@ import (
 
 	_ "embed"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var baseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
+
+type KeyMap struct {
+	Up     key.Binding
+	Down   key.Binding
+	Exit   key.Binding
+	Focus  key.Binding
+	Select key.Binding
+}
+
+var DefaultKeyMap = KeyMap{
+	Up: key.NewBinding(
+		key.WithKeys("k", "up"),
+		key.WithHelp("↑/k", "move up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("j", "down"),
+		key.WithHelp("↓/j", "move down"),
+	),
+	Exit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q/ctrl+c", "exit"),
+	),
+	Focus: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "focus"),
+	),
+	Select: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("eneter", "select"),
+	),
+}
 
 type appConfig struct {
 	DB  *database.Queries
@@ -209,16 +241,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "esc":
+		switch {
+		case key.Matches(msg, DefaultKeyMap.Focus):
 			if m.table.Focused() {
 				m.table.Blur()
 			} else {
 				m.table.Focus()
 			}
-		case "q", "ctrl+c":
+		case key.Matches(msg, DefaultKeyMap.Exit):
 			return m, tea.Quit
-		case "enter":
+		case key.Matches(msg, DefaultKeyMap.Select):
 			return m, tea.Batch(
 				tea.Printf("Let's go to %s!", m.table.SelectedRow()[1]),
 			)
@@ -237,6 +269,7 @@ var migrations string
 
 func main() {
 	// TODO: Make the database persist
+	log.Printf("Create db")
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)

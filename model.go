@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -17,39 +18,46 @@ import (
 var baseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
 
 type Model struct {
-	Table   table.Model
-	Help    help.Model
-	Width   int
-	Height  int
-	Loading bool
+	TextInput textinput.Model
+	Table     table.Model
+	Help      help.Model
+	Width     int
+	Height    int
+	Typing    bool
 }
 
 func initialModel() Model {
-	t := table.New(
+	ti := textinput.New()
+	ti.Placeholder = "Insert Peak Here..."
+	ti.Blur()
+	ti.CharLimit = 60
+
+	tb := table.New(
 		table.WithColumns([]table.Column{}),
 		table.WithRows([]table.Row{}),
 		table.WithFocused(true),
 		table.WithHeight(7),
 	)
 
-	s := table.DefaultStyles()
-	s.Header = s.Header.
+	tbStyle := table.DefaultStyles()
+	tbStyle.Header = tbStyle.Header.
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("240")).
 		BorderBottom(true).
 		Bold(false)
-	s.Selected = s.Selected.
+	tbStyle.Selected = tbStyle.Selected.
 		Foreground(lipgloss.Color("229")).
 		Background(lipgloss.Color("57")).
 		Bold(false)
-	t.SetStyles(s)
+	tb.SetStyles(tbStyle)
 
 	help := help.New()
 	help.ShowAll = true
 
 	return Model{
-		Table: t,
-		Help:  help,
+		Table:     tb,
+		Help:      help,
+		TextInput: ti,
 	}
 }
 
@@ -57,7 +65,7 @@ func getTopAnime() tea.Msg {
 	c := &http.Client{Timeout: 4 * time.Second}
 	res, err := c.Get("https://api.jikan.moe/v4/top/anime")
 	if err != nil {
-		// return an error here as an interface?
+		// return an error here as a message?
 		log.Fatalf("Error: %v", err)
 	}
 
@@ -72,9 +80,8 @@ func getTopAnime() tea.Msg {
 
 type jsonMessage TopAnimeResponse // TODO: find a generic json format that fits all jikan responses
 
-// Start off with listing top anime
 func (m Model) Init() tea.Cmd {
-	return getTopAnime
+	return tea.Batch(getTopAnime)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -98,11 +105,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Width = msg.Width
 		m.Height = msg.Height
 		m.Table.SetHeight(m.Height - 8)
+		m.TextInput.Width = m.Table.Width()
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, DefaultKeyMap.Esc):
+			m.Typing = !m.Typing
+			if m.Typing {
+				m.Table.Blur()
+				m.TextInput.Focus()
+			} else {
+				m.Table.Focus()
+				m.TextInput.Blur()
+			}
 		case key.Matches(msg, DefaultKeyMap.Exit):
 			return m, tea.Quit
 		case key.Matches(msg, DefaultKeyMap.Select):
+			if m.Typing {
+				// Search for anime with new cmd
+				m.TextInput.Reset()
+				m.Table.Focus()
+				m.TextInput.Blur()
+				m.Typing = !m.Typing
+			}
 			return m, tea.Batch(
 				// This doesn't do anything right now for some reason
 				tea.Printf("Let's go to %s!", m.Table.SelectedRow()[1]),
@@ -110,6 +134,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.Table, cmd = m.Table.Update(msg)
+	m.TextInput, cmd = m.TextInput.Update(msg)
 	return m, cmd
 }
 
@@ -118,8 +143,6 @@ func (m Model) View() string {
 		return ""
 	}
 
-	// TODO: show spinner when loading http reqs
-
-	render := baseStyle.Render(m.Table.View()) + "\n " + m.Help.View(DefaultKeyMap) + "\n"
+	render := m.TextInput.View() + "\n" + baseStyle.Render(m.Table.View()) + "\n" + m.Help.View(DefaultKeyMap) + "\n"
 	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, 0, render)
 }

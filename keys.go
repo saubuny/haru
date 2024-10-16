@@ -9,6 +9,7 @@ type KeyMap struct {
 	Down   key.Binding
 	Exit   key.Binding
 	Select key.Binding
+	Esc    key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
@@ -34,11 +35,15 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("↓/j", "move down"),
 	),
 	Exit: key.NewBinding(
-		key.WithKeys("q", "ctrl+c"),
-		key.WithHelp("q/ctrl+c", "exit"),
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("ctrl+c", "exit"),
 	),
 	Select: key.NewBinding(
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "select"),
+	),
+	Esc: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "toggle search"),
 	),
 }

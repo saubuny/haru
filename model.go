@@ -14,40 +14,20 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var baseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
+
 type Model struct {
-	Table  table.Model
-	Help   help.Model
-	Width  int
-	Height int
+	Table   table.Model
+	Help    help.Model
+	Width   int
+	Height  int
+	Loading bool
 }
 
 func initialModel() Model {
-	// show a table of top anime initially, the model will change to whatever type of content the user is searching for
-	c := &http.Client{Timeout: 4 * time.Second}
-	res, err := c.Get("https://api.jikan.moe/v4/top/anime")
-	if err != nil {
-		log.Fatalf("Error: %v", err)
-	}
-
-	var topAnime TopAnimeResponse
-	err = json.NewDecoder(res.Body).Decode(&topAnime)
-	if err != nil {
-		log.Fatalf("Error: %v", err)
-	}
-
-	columns := []table.Column{
-		{Title: "Name", Width: 40},
-		{Title: "Rating", Width: 40},
-	}
-
-	rows := make([]table.Row, 0)
-	for _, anime := range topAnime.Data {
-		rows = append(rows, table.Row{anime.Title, anime.Rating})
-	}
-
 	t := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
+		table.WithColumns([]table.Column{}),
+		table.WithRows([]table.Row{}),
 		table.WithFocused(true),
 		table.WithHeight(7),
 	)
@@ -73,13 +53,46 @@ func initialModel() Model {
 	}
 }
 
+func getTopAnime() tea.Msg {
+	c := &http.Client{Timeout: 4 * time.Second}
+	res, err := c.Get("https://api.jikan.moe/v4/top/anime")
+	if err != nil {
+		// return an error here as an interface?
+		log.Fatalf("Error: %v", err)
+	}
+
+	var topAnime TopAnimeResponse
+	err = json.NewDecoder(res.Body).Decode(&topAnime)
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	return jsonMessage(topAnime)
+}
+
+type jsonMessage TopAnimeResponse // TODO: find a generic json format that fits all jikan responses
+
+// Start off with listing top anime
 func (m Model) Init() tea.Cmd {
-	return nil
+	return getTopAnime
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case jsonMessage:
+		columns := []table.Column{
+			{Title: "Name", Width: 40},
+			{Title: "Rating", Width: 40},
+		}
+
+		rows := make([]table.Row, 0)
+		for _, anime := range msg.Data {
+			rows = append(rows, table.Row{anime.Title, anime.Rating})
+		}
+
+		m.Table.SetColumns(columns)
+		m.Table.SetRows(rows)
 	case tea.WindowSizeMsg:
 		// TODO: set a minimum width/height
 		m.Width = msg.Width

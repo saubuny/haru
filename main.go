@@ -11,10 +11,7 @@ import (
 	_ "embed"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
-
-var baseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
 
 type appConfig struct {
 	DB  *database.Queries

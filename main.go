@@ -2,17 +2,18 @@ package main
 
 import (
 	"context"
-	"database/sql"
+	// "database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	// _ "github.com/mattn/go-sqlite3"
 	"github.com/saubuny/haru/internal/database"
 
 	_ "embed"
 
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,8 +26,20 @@ type KeyMap struct {
 	Up     key.Binding
 	Down   key.Binding
 	Exit   key.Binding
-	Focus  key.Binding
 	Select key.Binding
+}
+
+// ShortHelp implements the KeyMap interface.
+func (km KeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{km.Up, km.Down}
+}
+
+// FullHelp implements the KeyMap interface.
+func (km KeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{km.Up, km.Down},
+		{km.Exit, km.Select},
+	}
 }
 
 var DefaultKeyMap = KeyMap{
@@ -42,13 +55,9 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q/ctrl+c", "exit"),
 	),
-	Focus: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "focus"),
-	),
 	Select: key.NewBinding(
 		key.WithKeys("enter"),
-		key.WithHelp("eneter", "select"),
+		key.WithHelp("enter", "select"),
 	),
 }
 
@@ -59,6 +68,7 @@ type appConfig struct {
 
 type model struct {
 	table table.Model
+	help  help.Model
 }
 
 type topAnimeResponse struct {
@@ -187,7 +197,7 @@ type topAnimeResponse struct {
 
 func initialModel() model {
 	// show a table of top anime initially, the model will change to whatever type of content the user is searching for
-	c := &http.Client{Timeout: 1 * time.Second}
+	c := &http.Client{Timeout: 4 * time.Second}
 	res, err := c.Get("https://api.jikan.moe/v4/top/anime")
 	if err != nil {
 		log.Fatalf("Error: %v", err)
@@ -228,8 +238,12 @@ func initialModel() model {
 		Bold(false)
 	t.SetStyles(s)
 
+	help := help.New()
+	help.ShowAll = true
+
 	return model{
 		table: t,
+		help:  help,
 	}
 }
 
@@ -242,12 +256,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, DefaultKeyMap.Focus):
-			if m.table.Focused() {
-				m.table.Blur()
-			} else {
-				m.table.Focus()
-			}
 		case key.Matches(msg, DefaultKeyMap.Exit):
 			return m, tea.Quit
 		case key.Matches(msg, DefaultKeyMap.Select):
@@ -261,7 +269,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	return baseStyle.Render(m.table.View()) + "\n " + m.table.HelpView() + "\n"
+	return baseStyle.Render(m.table.View()) + "\n " + m.help.View(DefaultKeyMap) + "\n"
 }
 
 //go:embed sql/schema/schema.sql
@@ -269,19 +277,18 @@ var migrations string
 
 func main() {
 	// TODO: Make the database persist
-	log.Printf("Create db")
-	db, err := sql.Open("sqlite3", ":memory:")
-	if err != nil {
-		log.Fatalf("Error initializing database: %v", err)
-	}
+	// db, err := sql.Open("sqlite3", ":memory:")
+	// if err != nil {
+	// 	log.Fatalf("Error initializing database: %v", err)
+	// }
 
-	dbQueries := database.New(db)
-	cfg := appConfig{DB: dbQueries, Ctx: context.Background()}
+	// dbQueries := database.New(db)
+	// cfg := appConfig{DB: dbQueries, Ctx: context.Background()}
 
 	// Should only run once when database is created i think, maybe have a "haru init" command or something to set up the database once it's set up to persist
-	if _, err := db.ExecContext(cfg.Ctx, migrations); err != nil {
-		log.Fatalf("Error running migrations: %v", err)
-	}
+	// if _, err := db.ExecContext(cfg.Ctx, migrations); err != nil {
+	// 	log.Fatalf("Error running migrations: %v", err)
+	// }
 
 	// user, err := cfg.DB.CreateUser(cfg.Ctx, "saubuny")
 	// if err != nil {

@@ -47,6 +47,7 @@ func main() {
 	// }
 
 	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
+	tea.SetWindowTitle("Haru")
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("Error: %v", err)
 	}

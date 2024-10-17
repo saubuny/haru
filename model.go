@@ -24,6 +24,7 @@ type Model struct {
 	Width     int
 	Height    int
 	Typing    bool
+	ShowHelp  bool
 }
 
 func initialModel() Model {
@@ -58,6 +59,26 @@ func initialModel() Model {
 		Table:     tb,
 		Help:      help,
 		TextInput: ti,
+		ShowHelp:  true,
+	}
+}
+
+func searchAnimeByName(searchString string) tea.Cmd {
+	return func() tea.Msg {
+		c := &http.Client{Timeout: 4 * time.Second}
+		res, err := c.Get("https://api.jikan.moe/v4/anime?q=" + searchString)
+		if err != nil {
+			// return an error here as a message?
+			log.Fatalf("Error: %v", err)
+		}
+
+		var topAnime TopAnimeResponse
+		err = json.NewDecoder(res.Body).Decode(&topAnime)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+
+		return jsonMessage(topAnime)
 	}
 }
 
@@ -108,6 +129,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.TextInput.Width = m.Table.Width()
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, DefaultKeyMap.Help):
+			m.ShowHelp = !m.ShowHelp
 		case key.Matches(msg, DefaultKeyMap.Esc):
 			m.Typing = !m.Typing
 			if m.Typing {
@@ -122,10 +145,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Select):
 			if m.Typing {
 				// Search for anime with new cmd
+				val := m.TextInput.Value()
+				tea.Batch()
 				m.TextInput.Reset()
 				m.Table.Focus()
 				m.TextInput.Blur()
 				m.Typing = !m.Typing
+				return m, searchAnimeByName(val)
 			}
 			return m, tea.Batch(
 				// This doesn't do anything right now for some reason
@@ -143,6 +169,9 @@ func (m Model) View() string {
 		return ""
 	}
 
-	render := m.TextInput.View() + "\n" + baseStyle.Render(m.Table.View()) + "\n" + m.Help.View(DefaultKeyMap) + "\n"
+	render := m.TextInput.View() + "\n" + baseStyle.Render(m.Table.View()) + "\n"
+	if m.ShowHelp {
+		render += m.Help.View(DefaultKeyMap) + "\n"
+	}
 	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, 0, render)
 }

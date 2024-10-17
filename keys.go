@@ -10,6 +10,7 @@ type KeyMap struct {
 	Exit   key.Binding
 	Select key.Binding
 	Esc    key.Binding
+	Help   key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
@@ -20,8 +21,8 @@ func (km KeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Up, km.Down},
-		{km.Exit, km.Select},
+		{km.Up, km.Down, km.Esc},
+		{km.Exit, km.Select, km.Help},
 	}
 }
 
@@ -45,5 +46,9 @@ var DefaultKeyMap = KeyMap{
 	Esc: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "toggle search"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "toggle help"),
 	),
 }

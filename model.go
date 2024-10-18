@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"encoding/json"
@@ -12,11 +13,24 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var baseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
+
+var titleStyle = func() lipgloss.Style {
+	b := lipgloss.RoundedBorder()
+	b.Right = "├"
+	return lipgloss.NewStyle().BorderStyle(b).Padding(0, 1)
+}()
+
+func (m Model) headerView(name string) string {
+	title := titleStyle.Render(name)
+	line := strings.Repeat("─", max(0, m.DefaultWidth-lipgloss.Width(title)))
+	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
+}
 
 type Model struct {
 	TextInput     textinput.Model
@@ -27,7 +41,9 @@ type Model struct {
 	Typing        bool
 	ShowHelp      bool
 	ShowAnimeInfo bool
-	AnimeInfo     string
+	Viewport      viewport.Model
+	AnimeTitle    string
+	DefaultWidth  int
 }
 
 func initialModel() Model {
@@ -147,15 +163,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Table.SetRows(rows)
 	case AnimeDataMessage:
 		m.ShowAnimeInfo = true
-		content := msg.Data.Title + "\n" + msg.Data.Synopsis
-		m.AnimeInfo = baseStyle.MaxWidth(m.Width-10).Render(content) + "\n"
+		m.AnimeTitle = msg.Data.Title
+
+		content := msg.Data.Synopsis
+		m.Viewport = viewport.New(m.DefaultWidth, m.Table.Height()+4)
+		m.Viewport.SetContent(content)
 	case tea.WindowSizeMsg:
-		// TODO: set a minimum width/height
 		m.Width = msg.Width
 		m.Height = msg.Height
+		m.DefaultWidth = int(float64(m.Width) * 0.8)
 
-		m.Table.SetHeight(m.Height - 8)
-		m.TextInput.Width = m.Table.Width()
+		m.Table.SetHeight(m.Height - 10)
+		m.TextInput.Width = m.DefaultWidth / 3
+		m.Viewport.Width = m.DefaultWidth
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, DefaultKeyMap.Help):
@@ -194,6 +214,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	m.Table, cmd = m.Table.Update(msg)
 	m.TextInput, cmd = m.TextInput.Update(msg)
+	m.Viewport, cmd = m.Viewport.Update(msg)
 	return m, cmd
 }
 
@@ -204,9 +225,9 @@ func (m Model) View() string {
 
 	render := ""
 	if m.ShowAnimeInfo {
-		render += m.AnimeInfo
+		render += m.headerView(m.AnimeTitle) + "\n" + m.Viewport.View() + "\n"
 	} else {
-		render += m.TextInput.View() + "\n" + baseStyle.Render(m.Table.View()) + "\n"
+		render += baseStyle.Render(m.TextInput.View()) + "\n" + baseStyle.Render(m.Table.View()) + "\n"
 	}
 	if m.ShowHelp {
 		render += m.Help.View(DefaultKeyMap) + "\n"

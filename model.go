@@ -87,14 +87,13 @@ func getAnimeById(id string) tea.Cmd {
 		c := &http.Client{Timeout: 4 * time.Second}
 		res, err := c.Get("https://api.jikan.moe/v4/anime/" + id)
 		if err != nil {
-			// return an error here as a message?
-			log.Fatalf("Error: %v", err)
+			return ErrorMessage(err.Error())
 		}
 
 		var anime AnimeDataResponse
 		err = json.NewDecoder(res.Body).Decode(&anime)
 		if err != nil {
-			log.Fatalf("Error: %v", err)
+			return ErrorMessage(err.Error())
 		}
 
 		return AnimeDataMessage(anime)
@@ -106,14 +105,13 @@ func searchAnimeByName(searchString string) tea.Cmd {
 		c := &http.Client{Timeout: 4 * time.Second}
 		res, err := c.Get("https://api.jikan.moe/v4/anime?q=" + searchString)
 		if err != nil {
-			// return an error here as a message?
-			log.Fatalf("Error: %v", err)
+			return ErrorMessage(err.Error())
 		}
 
 		var anime AnimeListResponse
 		err = json.NewDecoder(res.Body).Decode(&anime)
 		if err != nil {
-			log.Fatalf("Error: %v", err)
+			return ErrorMessage(err.Error())
 		}
 
 		return AnimeListMessage(anime)
@@ -139,6 +137,7 @@ func getTopAnime() tea.Msg {
 
 type AnimeListMessage AnimeListResponse
 type AnimeDataMessage AnimeDataResponse
+type ErrorMessage string
 
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(getTopAnime)
@@ -147,6 +146,8 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case ErrorMessage:
+		log.Fatalf("Error: %v", msg)
 	case AnimeListMessage:
 		columns := []table.Column{
 			{Title: "Id", Width: 10},

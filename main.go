@@ -2,14 +2,11 @@ package main
 
 import (
 	"context"
-	"log"
-
+	_ "embed"
+	tea "github.com/charmbracelet/bubbletea"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/saubuny/haru/internal/database"
-
-	_ "embed"
-
-	tea "github.com/charmbracelet/bubbletea"
+	"log"
 )
 
 type dbConfig struct {
@@ -21,7 +18,9 @@ type dbConfig struct {
 var migrations string
 
 func main() {
-	initDB(migrations)
+	if _, err := initDB(migrations); err != nil {
+		log.Fatalf("Error initalizing DB: %v", err)
+	}
 
 	// user, err := cfg.DB.CreateUser(cfg.Ctx, "saubuny")
 	// if err != nil {

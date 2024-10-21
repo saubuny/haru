@@ -4,8 +4,7 @@ import (
 	"context"
 	"log"
 
-	// "database/sql"
-	// _ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/saubuny/haru/internal/database"
 
 	_ "embed"
@@ -13,7 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type appConfig struct {
+type dbConfig struct {
 	DB  *database.Queries
 	Ctx context.Context
 }
@@ -22,19 +21,7 @@ type appConfig struct {
 var migrations string
 
 func main() {
-	// TODO: Make the database persist
-	// db, err := sql.Open("sqlite3", ":memory:")
-	// if err != nil {
-	// 	log.Fatalf("Error initializing database: %v", err)
-	// }
-
-	// dbQueries := database.New(db)
-	// cfg := appConfig{DB: dbQueries, Ctx: context.Background()}
-
-	// Should only run once when database is created i think, maybe have a "haru init" command or something to set up the database once it's set up to persist
-	// if _, err := db.ExecContext(cfg.Ctx, migrations); err != nil {
-	// 	log.Fatalf("Error running migrations: %v", err)
-	// }
+	initDB(migrations)
 
 	// user, err := cfg.DB.CreateUser(cfg.Ctx, "saubuny")
 	// if err != nil {

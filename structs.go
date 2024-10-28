@@ -155,7 +155,7 @@ type Myanimelist struct {
 	} `xml:"anime"`
 }
 
-type List struct {
+type HiAnimeList struct {
 	XMLName xml.Name `xml:"list"`
 	Text    string   `xml:",chardata"`
 	Folder  []struct {

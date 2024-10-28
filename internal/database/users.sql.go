@@ -9,27 +9,33 @@ import (
 	"context"
 )
 
-const createUser = `-- name: CreateUser :one
-INSERT INTO users (name)
-VALUES (?)
-RETURNING id, name
+const createAnime = `-- name: CreateAnime :one
+INSERT INTO anime (id, title, completion)
+VALUES (?, ?, ?)
+RETURNING id, title, completion
 `
 
-func (q *Queries) CreateUser(ctx context.Context, name string) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, name)
-	var i User
-	err := row.Scan(&i.ID, &i.Name)
+type CreateAnimeParams struct {
+	ID         int64
+	Title      string
+	Completion string
+}
+
+func (q *Queries) CreateAnime(ctx context.Context, arg CreateAnimeParams) (Anime, error) {
+	row := q.db.QueryRowContext(ctx, createAnime, arg.ID, arg.Title, arg.Completion)
+	var i Anime
+	err := row.Scan(&i.ID, &i.Title, &i.Completion)
 	return i, err
 }
 
-const getUser = `-- name: GetUser :one
-SELECT id, name FROM users
+const getAnime = `-- name: GetAnime :one
+SELECT id, title, completion FROM anime
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUser, id)
-	var i User
-	err := row.Scan(&i.ID, &i.Name)
+func (q *Queries) GetAnime(ctx context.Context, id int64) (Anime, error) {
+	row := q.db.QueryRowContext(ctx, getAnime, id)
+	var i Anime
+	err := row.Scan(&i.ID, &i.Title, &i.Completion)
 	return i, err
 }

@@ -1,8 +1,8 @@
--- name: GetUser :one
-SELECT * FROM users
+-- name: GetAnime :one
+SELECT * FROM anime
 WHERE id = ? LIMIT 1;
 
--- name: CreateUser :one
-INSERT INTO users (name)
-VALUES (?)
+-- name: CreateAnime :one
+INSERT INTO anime (id, title, completion)
+VALUES (?, ?, ?)
 RETURNING *;

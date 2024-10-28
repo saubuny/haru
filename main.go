@@ -17,10 +17,17 @@ type dbConfig struct {
 //go:embed sql/schema/schema.sql
 var migrations string
 
+// TODO
+// 1. CLI interaction
+// 2. Display DB information in TUI table (have different tabs?)
+
 func main() {
-	if _, err := initDB(migrations); err != nil {
+	cfg, err := initDB(migrations)
+	if err != nil {
 		log.Fatalf("Error initalizing DB: %v", err)
 	}
+
+	// cfg.importMAL()
 
 	// user, err := cfg.DB.CreateUser(cfg.Ctx, "saubuny")
 	// if err != nil {

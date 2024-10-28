@@ -1,4 +1,5 @@
-CREATE TABLE users (
+CREATE TABLE anime (
     id INTEGER PRIMARY KEY,
-    name text NOT NULL
+    title TEXT NOT NULL,
+    completion TEXT NOT NULL
 );

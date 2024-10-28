@@ -4,7 +4,8 @@
 
 package database
 
-type User struct {
-	ID   int64
-	Name string
+type Anime struct {
+	ID         int64
+	Title      string
+	Completion string
 }

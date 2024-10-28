@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/xml"
+	"strconv"
+
 	"github.com/saubuny/haru/internal/database"
 )
 
@@ -23,4 +26,23 @@ func initDB(schema string) (dbConfig, error) {
 	return cfg, nil
 }
 
-// func (cfg)
+// Kitsu also exports in the MAL format
+func (cfg dbConfig) importMAL(malXml string) error {
+	var animeList Myanimelist
+	if err := xml.Unmarshal([]byte(malXml), &animeList); err != nil {
+		return err
+	}
+
+	// TODO: convert completion to standard completion type like in old haru, and check if an id already exists in the db first, and if so, overwrite based on date, which should also be added in the db (have an statusUpdatedAt, and a CreatedAt)
+	for _, anime := range animeList.Anime {
+		id, _ := strconv.Atoi(anime.SeriesAnimedbID)
+		cfg.DB.CreateAnime(cfg.Ctx, database.CreateAnimeParams{
+			ID:         int64(id),
+			Title:      anime.Text,
+			Completion: anime.MyStatus,
+		})
+	}
+
+	return nil
+}
+func (cfg dbConfig) importHianime(hiXml string) {}

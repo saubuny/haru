@@ -27,18 +27,22 @@ func initDB(schema string) (dbConfig, error) {
 }
 
 // Kitsu also exports in the MAL format
-func (cfg dbConfig) importMAL(malXml string) error {
+func (cfg dbConfig) importMAL(malXml []byte) error {
 	var animeList Myanimelist
-	if err := xml.Unmarshal([]byte(malXml), &animeList); err != nil {
+	if err := xml.Unmarshal(malXml, &animeList); err != nil {
 		return err
 	}
 
 	// TODO: convert completion to standard completion type like in old haru, and check if an id already exists in the db first, and if so, overwrite based on date, which should also be added in the db (have an statusUpdatedAt, and a CreatedAt)
 	for _, anime := range animeList.Anime {
+		// The title isn't included, so we have to fetch the title manually for each anime (very slow, maybe add a progress bar somehow :3)
+
+		// ADD THAT HERE !!!
+
 		id, _ := strconv.Atoi(anime.SeriesAnimedbID)
 		cfg.DB.CreateAnime(cfg.Ctx, database.CreateAnimeParams{
 			ID:         int64(id),
-			Title:      anime.Text,
+			Title:      title,
 			Completion: anime.MyStatus,
 		})
 	}

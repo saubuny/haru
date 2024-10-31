@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/xml"
+	"log"
 	"strconv"
 
 	"github.com/saubuny/haru/internal/database"
@@ -34,15 +35,22 @@ func (cfg dbConfig) importMAL(malXml []byte) error {
 	}
 
 	// TODO: convert completion to standard completion type like in old haru, and check if an id already exists in the db first, and if so, overwrite based on date, which should also be added in the db (have an statusUpdatedAt, and a CreatedAt)
+	log.Printf("Importing Anime...")
 	for _, anime := range animeList.Anime {
-		// The title isn't included, so we have to fetch the title manually for each anime (very slow, maybe add a progress bar somehow :3)
+		// Kitsu requires us to do this, which is annoying, so we just wont support kitsu :)
 
-		// ADD THAT HERE !!!
+		// Add a spinner or something here in the future
+		// time.Sleep(time.Duration(time.Millisecond * 500)) // Rate limiting
+		// malAnime, err := getAnimeById(anime.SeriesAnimedbID)
+		// if err != nil {
+		// 	return err
+		// }
+		// log.Printf("Importing " + malAnime.Data.Title)
 
 		id, _ := strconv.Atoi(anime.SeriesAnimedbID)
 		cfg.DB.CreateAnime(cfg.Ctx, database.CreateAnimeParams{
 			ID:         int64(id),
-			Title:      title,
+			Title:      anime.SeriesTitle,
 			Completion: anime.MyStatus,
 		})
 	}

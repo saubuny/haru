@@ -62,11 +62,11 @@ func main() {
 					},
 					&cli.StringFlag{
 						Name:        "platform",
-						Usage:       "platform to import from (must be one of Hianime, MAL, or Kitsu)",
+						Usage:       "platform to import from (must be one of Hianime or MAL)",
 						Destination: &importPlatform,
 						Required:    true,
 						Action: func(ctx *cli.Context, s string) error {
-							validPlatforms := []string{"hianime", "mal", "kitsu"}
+							validPlatforms := []string{"hianime", "mal"}
 							if !slices.Contains(validPlatforms, strings.ToLower(importPlatform)) {
 								return cli.Exit("Invalid platform", 1)
 							}
@@ -100,16 +100,4 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
-
-	// cfg.importMAL()
-
-	// user, err := cfg.DB.CreateUser(cfg.Ctx, "saubuny")
-	// if err != nil {
-	// 	log.Fatalf("Error: %v", err)
-	// }
-	//
-	// userFromSelect, err := cfg.DB.GetUser(cfg.Ctx, 1)
-	// if err != nil {
-	// 	log.Fatalf("Error: %v", err)
-	// }
 }

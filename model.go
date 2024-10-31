@@ -82,25 +82,34 @@ func initialModel() Model {
 	}
 }
 
-func getAnimeById(id string) tea.Cmd {
+// Extracted into separate function because it needs to be used in the import functions as well
+func getAnimeById(id string) (AnimeDataResponse, error) {
+	c := &http.Client{Timeout: 4 * time.Second}
+	res, err := c.Get("https://api.jikan.moe/v4/anime/" + id)
+	if err != nil {
+		return AnimeDataResponse{}, err
+	}
+
+	var anime AnimeDataResponse
+	err = json.NewDecoder(res.Body).Decode(&anime)
+	if err != nil {
+		return AnimeDataResponse{}, nil
+	}
+
+	return anime, nil
+}
+
+func getAnimeByIdCmd(id string) tea.Cmd {
 	return func() tea.Msg {
-		c := &http.Client{Timeout: 4 * time.Second}
-		res, err := c.Get("https://api.jikan.moe/v4/anime/" + id)
+		anime, err := getAnimeById(id)
 		if err != nil {
 			return ErrorMessage(err.Error())
 		}
-
-		var anime AnimeDataResponse
-		err = json.NewDecoder(res.Body).Decode(&anime)
-		if err != nil {
-			return ErrorMessage(err.Error())
-		}
-
 		return AnimeDataMessage(anime)
 	}
 }
 
-func searchAnimeByName(searchString string) tea.Cmd {
+func searchAnimeByNameCmd(searchString string) tea.Cmd {
 	return func() tea.Msg {
 		c := &http.Client{Timeout: 4 * time.Second}
 		res, err := c.Get("https://api.jikan.moe/v4/anime?q=" + searchString)
@@ -205,12 +214,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Table.Focus()
 				m.TextInput.Blur()
 				m.Typing = !m.Typing
-				return m, searchAnimeByName(val)
+				return m, searchAnimeByNameCmd(val)
 			}
 			if m.ShowAnimeInfo {
 				return m, nil
 			}
-			return m, getAnimeById(m.Table.SelectedRow()[0])
+			return m, getAnimeByIdCmd(m.Table.SelectedRow()[0])
 		}
 	}
 	m.Table, cmd = m.Table.Update(msg)

@@ -143,6 +143,7 @@ type Myanimelist struct {
 	} `xml:"myinfo"`
 	Anime []struct {
 		Text              string `xml:",chardata"`
+		SeriesTitle       string `xml:"series_title"`
 		SeriesAnimedbID   string `xml:"series_animedb_id"`
 		MyWatchedEpisodes string `xml:"my_watched_episodes"`
 		MyReadVolumes     string `xml:"my_read_volumes"`

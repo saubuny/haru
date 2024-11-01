@@ -5,12 +5,13 @@ import (
 )
 
 type KeyMap struct {
-	Up     key.Binding
-	Down   key.Binding
-	Exit   key.Binding
-	Select key.Binding
-	Esc    key.Binding
-	Help   key.Binding
+	Up        key.Binding
+	Down      key.Binding
+	Exit      key.Binding
+	Select    key.Binding
+	Esc       key.Binding
+	Help      key.Binding
+	ChangeTab key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
@@ -21,7 +22,7 @@ func (km KeyMap) ShortHelp() []key.Binding {
 // FullHelp implements the KeyMap interface.
 func (km KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Up, km.Down, km.Esc},
+		{km.Up, km.Down, km.Esc, km.ChangeTab},
 		{km.Exit, km.Select, km.Help},
 	}
 }
@@ -50,5 +51,9 @@ var DefaultKeyMap = KeyMap{
 	Help: key.NewBinding(
 		key.WithKeys("?"),
 		key.WithHelp("?", "toggle help"),
+	),
+	ChangeTab: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "change tab"),
 	),
 }

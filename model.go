@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/saubuny/haru/internal/database"
 )
 
 var baseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
@@ -44,9 +45,11 @@ type Model struct {
 	Viewport      viewport.Model
 	AnimeTitle    string
 	DefaultWidth  int
+	DBConfig      dbConfig
+	ShowDBInfo    bool
 }
 
-func initialModel() Model {
+func initialModel(cfg dbConfig) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Insert Peak Here..."
 	ti.Blur()
@@ -79,6 +82,7 @@ func initialModel() Model {
 		Help:      help,
 		TextInput: ti,
 		ShowHelp:  true,
+		DBConfig:  cfg,
 	}
 }
 
@@ -109,6 +113,7 @@ func getAnimeByIdCmd(id string) tea.Cmd {
 	}
 }
 
+// Breaks if there is a space in the search string ??????
 func searchAnimeByNameCmd(searchString string) tea.Cmd {
 	return func() tea.Msg {
 		c := &http.Client{Timeout: 4 * time.Second}
@@ -127,12 +132,22 @@ func searchAnimeByNameCmd(searchString string) tea.Cmd {
 	}
 }
 
+func (cfg dbConfig) showDBAnime() tea.Cmd {
+	return func() tea.Msg {
+		anime, err := cfg.DB.GetAllAnime(cfg.Ctx)
+		if err != nil {
+			return ErrorMessage(err.Error())
+		}
+
+		return AnimeDBListMessage(anime)
+	}
+}
+
 func getTopAnime() tea.Msg {
 	c := &http.Client{Timeout: 4 * time.Second}
 	res, err := c.Get("https://api.jikan.moe/v4/top/anime")
 	if err != nil {
-		// return an error here as a message?
-		log.Fatalf("Error: %v", err)
+		// return an error here as a message? log.Fatalf("Error: %v", err)
 	}
 
 	var topAnime AnimeListResponse
@@ -145,6 +160,7 @@ func getTopAnime() tea.Msg {
 }
 
 type AnimeListMessage AnimeListResponse
+type AnimeDBListMessage []database.Anime
 type AnimeDataMessage AnimeDataResponse
 type ErrorMessage string
 
@@ -157,6 +173,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ErrorMessage:
 		log.Fatalf("Error: %v", msg)
+	case AnimeDBListMessage:
+		if m.ShowDBInfo {
+			m.ShowDBInfo = false
+			return m, getTopAnime
+		}
+
+		m.ShowDBInfo = true
+
+		columns := []table.Column{
+			{Title: "Id", Width: 10},
+			{Title: "Name", Width: 40},
+			{Title: "Completion", Width: 40},
+		}
+
+		rows := make([]table.Row, 0)
+		for _, anime := range msg {
+			rows = append(rows, table.Row{strconv.Itoa(int(anime.ID)), anime.Title, anime.Completion})
+		}
+
+		m.Table.SetColumns(columns)
+		m.Table.SetRows(rows)
 	case AnimeListMessage:
 		columns := []table.Column{
 			{Title: "Id", Width: 10},
@@ -183,11 +220,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Height = msg.Height
 		m.DefaultWidth = int(float64(m.Width) * 0.8)
 
-		m.Table.SetHeight(m.Height - 10)
+		// Height of help + search bar
+		m.Table.SetHeight(m.Height - 11)
 		m.TextInput.Width = m.DefaultWidth / 3
 		m.Viewport.Width = m.DefaultWidth
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, DefaultKeyMap.ChangeTab):
+			return m, m.DBConfig.showDBAnime()
 		case key.Matches(msg, DefaultKeyMap.Help):
 			m.ShowHelp = !m.ShowHelp
 		case key.Matches(msg, DefaultKeyMap.Esc):

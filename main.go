@@ -23,10 +23,6 @@ type dbConfig struct {
 //go:embed sql/schema/schema.sql
 var migrations string
 
-// === TODO ===
-// 1. CLI interaction
-// 2. Display DB information in TUI table (have different tabs?)
-
 func main() {
 	cfg, err := initDB(migrations)
 	if err != nil {
@@ -41,7 +37,7 @@ func main() {
 		Name:  "Haru",
 		Usage: "Track anime",
 		Action: func(ctx *cli.Context) error {
-			p := tea.NewProgram(initialModel(), tea.WithAltScreen())
+			p := tea.NewProgram(initialModel(cfg), tea.WithAltScreen())
 			tea.SetWindowTitle("Haru")
 			if _, err := p.Run(); err != nil {
 				log.Fatalf("Error: %v", err)

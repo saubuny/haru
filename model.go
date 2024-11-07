@@ -194,6 +194,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.Table.SetColumns(columns)
 		m.Table.SetRows(rows)
+		m.Table.SetCursor(0)
 	case AnimeListMessage:
 		columns := []table.Column{
 			{Title: "Id", Width: 10},
@@ -208,6 +209,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.Table.SetColumns(columns)
 		m.Table.SetRows(rows)
+		m.Table.SetCursor(0)
 	case AnimeDataMessage:
 		m.ShowAnimeInfo = true
 		m.AnimeTitle = msg.Data.Title
@@ -227,6 +229,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, DefaultKeyMap.ChangeTab):
+			if m.ShowAnimeInfo {
+				return m, nil
+			}
 			return m, m.DBConfig.showDBAnime()
 		case key.Matches(msg, DefaultKeyMap.Help):
 			m.ShowHelp = !m.ShowHelp

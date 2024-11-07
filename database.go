@@ -11,8 +11,8 @@ import (
 )
 
 func initDB(schema string) (dbConfig, error) {
-	// TODO: Make the database persist
-	db, err := sql.Open("sqlite3", ":memory:")
+	// db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite3", "anime.db")
 	if err != nil {
 		return dbConfig{}, err
 	}

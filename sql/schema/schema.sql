@@ -1,4 +1,4 @@
-CREATE TABLE anime (
+CREATE TABLE IF NOT EXISTS anime (
     id INTEGER PRIMARY KEY,
     title TEXT NOT NULL,
     completion TEXT NOT NULL

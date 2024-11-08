@@ -2,7 +2,25 @@ package main
 
 import (
 	"encoding/xml"
+	"time"
 )
+
+// A central completion type, as other trackers use different wordings, so we cant just use strings
+const (
+	Watching = iota
+	PlanToWatch
+	Completed
+	OnHold
+	Dropped
+)
+
+type HaruData struct {
+	Title       string
+	MalID       int64
+	StartDate   time.Time // .Format("0000-00-00")
+	UpdatedDate time.Time // .Format("0000-00-00")
+	Completion  int
+}
 
 type AnimeDataResponse struct {
 	Data AnimeData `json:"data"`

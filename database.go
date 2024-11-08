@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/saubuny/haru/internal/database"
 )
@@ -26,6 +27,10 @@ func initDB(schema string) (dbConfig, error) {
 
 	return cfg, nil
 }
+
+// put data inside haru struct, and upload to database
+// this will take in a completion number, the individual import functions will handle deciding what that is
+func uploadToDB(title string, id int64, startDate time.Time, completion int) {}
 
 // Kitsu also exports in the MAL format
 func (cfg dbConfig) importMAL(malXml []byte) error {
@@ -57,4 +62,5 @@ func (cfg dbConfig) importMAL(malXml []byte) error {
 
 	return nil
 }
+
 func (cfg dbConfig) importHianime(hiXml string) {}

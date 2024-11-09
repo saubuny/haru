@@ -10,26 +10,40 @@ import (
 )
 
 const createAnime = `-- name: CreateAnime :one
-INSERT INTO anime (id, title, completion)
-VALUES (?, ?, ?)
-RETURNING id, title, completion
+INSERT INTO anime (id, title, startDate, updatedDate, completion)
+VALUES (?, ?, ?, ?, ?)
+RETURNING id, title, startdate, updateddate, completion
 `
 
 type CreateAnimeParams struct {
-	ID         int64
-	Title      string
-	Completion string
+	ID          int64
+	Title       string
+	Startdate   string
+	Updateddate string
+	Completion  string
 }
 
 func (q *Queries) CreateAnime(ctx context.Context, arg CreateAnimeParams) (Anime, error) {
-	row := q.db.QueryRowContext(ctx, createAnime, arg.ID, arg.Title, arg.Completion)
+	row := q.db.QueryRowContext(ctx, createAnime,
+		arg.ID,
+		arg.Title,
+		arg.Startdate,
+		arg.Updateddate,
+		arg.Completion,
+	)
 	var i Anime
-	err := row.Scan(&i.ID, &i.Title, &i.Completion)
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Startdate,
+		&i.Updateddate,
+		&i.Completion,
+	)
 	return i, err
 }
 
 const getAllAnime = `-- name: GetAllAnime :many
-SELECT id, title, completion FROM anime
+SELECT id, title, startdate, updateddate, completion FROM anime
 `
 
 func (q *Queries) GetAllAnime(ctx context.Context) ([]Anime, error) {
@@ -41,7 +55,13 @@ func (q *Queries) GetAllAnime(ctx context.Context) ([]Anime, error) {
 	var items []Anime
 	for rows.Next() {
 		var i Anime
-		if err := rows.Scan(&i.ID, &i.Title, &i.Completion); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Startdate,
+			&i.Updateddate,
+			&i.Completion,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -56,13 +76,19 @@ func (q *Queries) GetAllAnime(ctx context.Context) ([]Anime, error) {
 }
 
 const getAnime = `-- name: GetAnime :one
-SELECT id, title, completion FROM anime
+SELECT id, title, startdate, updateddate, completion FROM anime
 WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetAnime(ctx context.Context, id int64) (Anime, error) {
 	row := q.db.QueryRowContext(ctx, getAnime, id)
 	var i Anime
-	err := row.Scan(&i.ID, &i.Title, &i.Completion)
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Startdate,
+		&i.Updateddate,
+		&i.Completion,
+	)
 	return i, err
 }

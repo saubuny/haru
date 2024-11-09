@@ -29,8 +29,16 @@ func initDB(schema string) (dbConfig, error) {
 }
 
 // put data inside haru struct, and upload to database
-// this will take in a completion number, the individual import functions will handle deciding what that is
-func uploadToDB(title string, id int64, startDate time.Time, completion int) {}
+// TODO: deal with duplicates. if an ID already exists, use an update query instead.
+func (cfg dbConfig) uploadToDB(title string, id int, startDate string, completion string) {
+	cfg.DB.CreateAnime(cfg.Ctx, database.CreateAnimeParams{
+		ID:          int64(id),
+		Title:       title,
+		Startdate:   startDate,
+		Updateddate: time.Now().Format("0000-00-00"), // sqlc >:(
+		Completion:  completion,
+	})
+}
 
 // Kitsu also exports in the MAL format
 func (cfg dbConfig) importMAL(malXml []byte) error {
@@ -39,28 +47,24 @@ func (cfg dbConfig) importMAL(malXml []byte) error {
 		return err
 	}
 
-	// TODO: convert completion to standard completion type like in old haru, and check if an id already exists in the db first, and if so, overwrite based on date, which should also be added in the db (have an statusUpdatedAt, and a CreatedAt)
 	log.Printf("Importing Anime...")
 	for _, anime := range animeList.Anime {
-		// Kitsu requires us to do this, which is annoying, so we just wont support kitsu :)
-
-		// Add a spinner or something here in the future
-		// time.Sleep(time.Duration(time.Millisecond * 500)) // Rate limiting
-		// malAnime, err := getAnimeById(anime.SeriesAnimedbID)
-		// if err != nil {
-		// 	return err
-		// }
-		// log.Printf("Importing " + malAnime.Data.Title)
-
 		id, _ := strconv.Atoi(anime.SeriesAnimedbID)
-		cfg.DB.CreateAnime(cfg.Ctx, database.CreateAnimeParams{
-			ID:         int64(id),
-			Title:      anime.SeriesTitle,
-			Completion: anime.MyStatus,
-		})
+
+		// Different platforms use different naming
+		completion := anime.MyStatus
+		if anime.MyStatus == "Plan to Watch" {
+			completion = PlanToWatch
+		} else if anime.MyStatus == "On-Hold" {
+			completion = OnHold
+		}
+
+		cfg.uploadToDB(anime.SeriesTitle, id, anime.MyStartDate, completion)
 	}
 
 	return nil
 }
 
-func (cfg dbConfig) importHianime(hiXml string) {}
+func (cfg dbConfig) importHianime(hiXml []byte) error {
+	return nil
+}

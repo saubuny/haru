@@ -5,7 +5,9 @@
 package database
 
 type Anime struct {
-	ID         int64
-	Title      string
-	Completion string
+	ID          int64
+	Title       string
+	Startdate   string
+	Updateddate string
+	Completion  string
 }

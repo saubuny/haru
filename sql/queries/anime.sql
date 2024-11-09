@@ -6,6 +6,6 @@ WHERE id = ? LIMIT 1;
 SELECT * FROM anime;
 
 -- name: CreateAnime :one
-INSERT INTO anime (id, title, completion)
-VALUES (?, ?, ?)
+INSERT INTO anime (id, title, startDate, updatedDate, completion)
+VALUES (?, ?, ?, ?, ?)
 RETURNING *;

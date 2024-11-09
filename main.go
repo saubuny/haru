@@ -76,7 +76,11 @@ func main() {
 						return err
 					}
 
-					err = cfg.importMAL(file)
+					if strings.ToLower(importPlatform) == "mal" {
+						err = cfg.importMAL(file)
+					} else if strings.ToLower(importPlatform) == "hianime" {
+						err = cfg.importHianime(file)
+					}
 					if err != nil {
 						return err
 					}

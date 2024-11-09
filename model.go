@@ -184,12 +184,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		columns := []table.Column{
 			{Title: "Id", Width: 10},
 			{Title: "Name", Width: 40},
-			{Title: "Completion", Width: 40},
+			{Title: "Completion", Width: 30},
+			{Title: "Start Date", Width: 30},
 		}
 
 		rows := make([]table.Row, 0)
 		for _, anime := range msg {
-			rows = append(rows, table.Row{strconv.Itoa(int(anime.ID)), anime.Title, anime.Completion})
+			rows = append(rows, table.Row{strconv.Itoa(int(anime.ID)), anime.Title, anime.Completion, anime.Startdate})
 		}
 
 		m.Table.SetColumns(columns)

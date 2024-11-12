@@ -28,16 +28,49 @@ func initDB(schema string) (dbConfig, error) {
 	return cfg, nil
 }
 
-// put data inside haru struct, and upload to database
 // TODO: deal with duplicates. if an ID already exists, use an update query instead.
-func (cfg dbConfig) uploadToDB(title string, id int, startDate string, completion string) {
-	cfg.DB.CreateAnime(cfg.Ctx, database.CreateAnimeParams{
-		ID:          int64(id),
-		Title:       title,
+func (cfg dbConfig) uploadToDB(title string, id int, startDate string, completion string) error {
+	// Check if ID already exists, create new oldAnime if it does
+	oldAnime, err := cfg.DB.GetAnime(cfg.Ctx, int64(id))
+	if err == sql.ErrNoRows {
+		_, err = cfg.DB.CreateAnime(cfg.Ctx, database.CreateAnimeParams{
+			ID:          int64(id),
+			Title:       title,
+			Startdate:   startDate,
+			Updateddate: time.Now().Format("2006-01-02"), // sqlc made the naming weird >:(
+			Completion:  completion,
+		})
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// An older entry can't rewrite a newer one
+	oldStartDate, err := time.Parse("2006-01-02", oldAnime.Startdate)
+	newStartDate, err := time.Parse("2006-01-02", startDate)
+	if err != nil {
+		return err
+	}
+
+	if newStartDate.Before(oldStartDate) {
+		return nil
+	}
+
+	err = cfg.DB.UpdateAnime(cfg.Ctx, database.UpdateAnimeParams{
 		Startdate:   startDate,
-		Updateddate: time.Now().Format("0000-00-00"), // sqlc >:(
+		Updateddate: time.Now().Format("2006-01-02"),
 		Completion:  completion,
+		ID:          int64(id),
 	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Kitsu also exports in the MAL format

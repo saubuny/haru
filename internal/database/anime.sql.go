@@ -92,3 +92,24 @@ func (q *Queries) GetAnime(ctx context.Context, id int64) (Anime, error) {
 	)
 	return i, err
 }
+
+const updateAnime = `-- name: UpdateAnime :exec
+UPDATE anime SET startDate = ?, updatedDate = ?, completion = ? WHERE id = ?
+`
+
+type UpdateAnimeParams struct {
+	Startdate   string
+	Updateddate string
+	Completion  string
+	ID          int64
+}
+
+func (q *Queries) UpdateAnime(ctx context.Context, arg UpdateAnimeParams) error {
+	_, err := q.db.ExecContext(ctx, updateAnime,
+		arg.Startdate,
+		arg.Updateddate,
+		arg.Completion,
+		arg.ID,
+	)
+	return err
+}

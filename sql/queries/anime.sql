@@ -12,3 +12,9 @@ UPDATE anime SET startDate = ?, updatedDate = ?, completion = ? WHERE id = ?;
 INSERT INTO anime (id, title, startDate, updatedDate, completion)
 VALUES (?, ?, ?, ?, ?)
 RETURNING *;
+
+-- name: DeleteAnime :exec
+DELETE FROM anime WHERE id = ?;
+
+-- name: DeleteAllAnime :exec
+DELETE FROM anime;

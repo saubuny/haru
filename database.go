@@ -11,9 +11,11 @@ import (
 	"github.com/saubuny/haru/internal/database"
 )
 
-func initDB(schema string) (dbConfig, error) {
+// TODO: input custom db location (like ~/.haru/anime.db)
+// TODO: have separate table for manga !!
+func initDB(schema string, location string) (dbConfig, error) {
 	// db, err := sql.Open("sqlite3", ":memory:")
-	db, err := sql.Open("sqlite3", "anime.db")
+	db, err := sql.Open("sqlite3", location)
 	if err != nil {
 		return dbConfig{}, err
 	}
@@ -28,10 +30,9 @@ func initDB(schema string) (dbConfig, error) {
 	return cfg, nil
 }
 
-// TODO: deal with duplicates. if an ID already exists, use an update query instead.
 func (cfg dbConfig) uploadToDB(title string, id int, startDate string, completion string) error {
-	// Check if ID already exists, create new oldAnime if it does
-	oldAnime, err := cfg.DB.GetAnime(cfg.Ctx, int64(id))
+	// Check if ID already exists, create new anime if it does
+	_, err := cfg.DB.GetAnime(cfg.Ctx, int64(id))
 	if err == sql.ErrNoRows {
 		_, err = cfg.DB.CreateAnime(cfg.Ctx, database.CreateAnimeParams{
 			ID:          int64(id),
@@ -48,17 +49,7 @@ func (cfg dbConfig) uploadToDB(title string, id int, startDate string, completio
 		return err
 	}
 
-	// An older entry can't rewrite a newer one
-	oldStartDate, err := time.Parse("2006-01-02", oldAnime.Startdate)
-	newStartDate, err := time.Parse("2006-01-02", startDate)
-	if err != nil {
-		return err
-	}
-
-	if newStartDate.Before(oldStartDate) {
-		return nil
-	}
-
+	// The current anime being imported should overwrite the old one !!
 	err = cfg.DB.UpdateAnime(cfg.Ctx, database.UpdateAnimeParams{
 		Startdate:   startDate,
 		Updateddate: time.Now().Format("2006-01-02"),

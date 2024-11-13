@@ -42,6 +42,24 @@ func (q *Queries) CreateAnime(ctx context.Context, arg CreateAnimeParams) (Anime
 	return i, err
 }
 
+const deleteAllAnime = `-- name: DeleteAllAnime :exec
+DELETE FROM anime
+`
+
+func (q *Queries) DeleteAllAnime(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteAllAnime)
+	return err
+}
+
+const deleteAnime = `-- name: DeleteAnime :exec
+DELETE FROM anime WHERE id = ?
+`
+
+func (q *Queries) DeleteAnime(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteAnime, id)
+	return err
+}
+
 const getAllAnime = `-- name: GetAllAnime :many
 SELECT id, title, startdate, updateddate, completion FROM anime
 `

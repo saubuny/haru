@@ -24,7 +24,7 @@ type dbConfig struct {
 var migrations string
 
 func main() {
-	cfg, err := initDB(migrations)
+	cfg, err := initDB(migrations, "anime.db")
 	if err != nil {
 		log.Fatalf("Error initalizing DB: %v", err)
 	}

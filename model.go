@@ -115,6 +115,25 @@ func getAnimeByIdCmd(id string) tea.Cmd {
 	}
 }
 
+func (cfg dbConfig) searchDBByNameCmd(searchString string) tea.Cmd {
+	return func() tea.Msg {
+		fullAnime, err := cfg.DB.GetAllAnime(cfg.Ctx)
+		if err != nil {
+			return ErrorMessage(err.Error())
+		}
+
+		// I know nothing about search algorithms, so i'm doing this simple thing for now. maybe i can do something better in the future, idk
+		newAnime := []database.Anime{}
+		for _, anime := range fullAnime {
+			if strings.Contains(strings.ToLower(anime.Title), strings.ToLower(searchString)) {
+				newAnime = append(newAnime, anime)
+			}
+		}
+
+		return AnimeDBListMessage(newAnime)
+	}
+}
+
 // Breaks if there is a space in the search string ??????
 func searchAnimeByNameCmd(searchString string) tea.Cmd {
 	return func() tea.Msg {
@@ -181,13 +200,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ErrorMessage:
 		log.Fatalf("Error: %v", msg)
 	case AnimeDBListMessage:
-		if m.ShowDBInfo {
-			m.ShowDBInfo = false
-			return m, m.getTopAnime
-		}
-
-		m.ShowDBInfo = true
-
 		columns := []table.Column{
 			{Title: "Id", Width: 10},
 			{Title: "Name", Width: 40},
@@ -242,6 +254,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.ShowAnimeInfo || m.Typing {
 				return m, nil
 			}
+
+			if m.ShowDBInfo {
+				m.ShowDBInfo = false
+				return m, m.getTopAnime
+			}
+
+			m.ShowDBInfo = true
 			return m, m.DBConfig.showDBAnime()
 		case key.Matches(msg, DefaultKeyMap.Help):
 			m.ShowHelp = !m.ShowHelp
@@ -264,11 +283,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Typing {
 				// Search for anime with new cmd
 				val := m.TextInput.Value()
-				tea.Batch()
 				m.TextInput.Reset()
 				m.Table.Focus()
 				m.TextInput.Blur()
 				m.Typing = !m.Typing
+				if m.ShowDBInfo {
+					return m, m.DBConfig.searchDBByNameCmd(val)
+				}
 				return m, searchAnimeByNameCmd(val)
 			}
 			if m.ShowAnimeInfo {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -47,6 +48,7 @@ type Model struct {
 	DefaultWidth  int
 	DBConfig      dbConfig
 	ShowDBInfo    bool
+	PreviousRows  AnimeListResponse
 }
 
 func initialModel(cfg dbConfig) Model {
@@ -86,7 +88,7 @@ func initialModel(cfg dbConfig) Model {
 	}
 }
 
-// Extracted into separate function because it needs to be used in the import functions as well
+// Extracted into separate function because it needs to be used in the kitsu import function as well
 func getAnimeById(id string) (AnimeDataResponse, error) {
 	c := &http.Client{Timeout: 4 * time.Second}
 	res, err := c.Get("https://api.jikan.moe/v4/anime/" + id)
@@ -143,17 +145,22 @@ func (cfg dbConfig) showDBAnime() tea.Cmd {
 	}
 }
 
-func getTopAnime() tea.Msg {
+func (m Model) getTopAnime() tea.Msg {
+	// Show cached results if they've already been saved
+	if m.PreviousRows.Data != nil {
+		return AnimeListMessage(m.PreviousRows)
+	}
+
 	c := &http.Client{Timeout: 4 * time.Second}
 	res, err := c.Get("https://api.jikan.moe/v4/top/anime")
 	if err != nil {
-		// return an error here as a message? log.Fatalf("Error: %v", err)
+		return ErrorMessage(err.Error())
 	}
 
 	var topAnime AnimeListResponse
 	err = json.NewDecoder(res.Body).Decode(&topAnime)
 	if err != nil {
-		log.Fatalf("Error: %v", err)
+		return ErrorMessage(err.Error())
 	}
 
 	return AnimeListMessage(topAnime)
@@ -165,7 +172,7 @@ type AnimeDataMessage AnimeDataResponse
 type ErrorMessage string
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(getTopAnime)
+	return tea.Batch(m.getTopAnime)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -176,7 +183,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case AnimeDBListMessage:
 		if m.ShowDBInfo {
 			m.ShowDBInfo = false
-			return m, getTopAnime
+			return m, m.getTopAnime
 		}
 
 		m.ShowDBInfo = true
@@ -184,8 +191,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		columns := []table.Column{
 			{Title: "Id", Width: 10},
 			{Title: "Name", Width: 40},
-			{Title: "Completion", Width: 30},
-			{Title: "Start Date", Width: 30},
+			{Title: "Completion", Width: 20},
+			{Title: "Start Date", Width: 10},
 		}
 
 		rows := make([]table.Row, 0)
@@ -197,15 +204,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Table.SetRows(rows)
 		m.Table.SetCursor(0)
 	case AnimeListMessage:
+		// There is a crash if the number of columns differs between both tabs
 		columns := []table.Column{
 			{Title: "Id", Width: 10},
 			{Title: "Name", Width: 40},
-			{Title: "Rating", Width: 40},
+			{Title: "Rating", Width: 30},
+			{Title: "Score", Width: 10},
 		}
 
 		rows := make([]table.Row, 0)
 		for _, anime := range msg.Data {
-			rows = append(rows, table.Row{strconv.Itoa(anime.MalID), anime.Title, anime.Rating})
+			rows = append(rows, table.Row{strconv.Itoa(anime.MalID), anime.Title, anime.Rating, fmt.Sprintf("%v", anime.Score)})
 		}
 
 		m.Table.SetColumns(columns)
@@ -230,7 +239,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, DefaultKeyMap.ChangeTab):
-			if m.ShowAnimeInfo {
+			if m.ShowAnimeInfo || m.Typing {
 				return m, nil
 			}
 			return m, m.DBConfig.showDBAnime()

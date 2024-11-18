@@ -49,6 +49,7 @@ type Model struct {
 	DBConfig      dbConfig
 	ShowDBInfo    bool
 	PreviousRows  AnimeListResponse
+	ModifyEntry   bool
 }
 
 func initialModel(cfg dbConfig) Model {
@@ -185,6 +186,14 @@ func (m Model) getTopAnime() tea.Msg {
 	return AnimeListMessage(topAnime)
 }
 
+func (cfg dbConfig) modifyEntry() tea.Cmd {
+	// Depending on input, either remove or add to DB
+	// the menu should be able
+	return func() tea.Msg {
+		return nil
+	}
+}
+
 type AnimeListMessage AnimeListResponse
 type AnimeDBListMessage []database.Anime
 type AnimeDataMessage AnimeDataResponse
@@ -245,6 +254,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.DefaultWidth = int(float64(m.Width) * 0.8)
 
 		// Height of help + search bar
+		// I really do think hardcoded values like this are bad but i dont know an alternative
 		m.Table.SetHeight(m.Height - 11)
 		m.TextInput.Width = m.DefaultWidth / 3
 		m.Viewport.Width = m.DefaultWidth
@@ -254,6 +264,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Table.Blur()
 			switch {
 			case key.Matches(msg, AnimeInfoKeyMap.Esc):
+				if m.ModifyEntry {
+					m.ModifyEntry = false
+					return m, nil
+				}
 				m.Table.Focus()
 				m.ShowAnimeInfo = false
 				return m, nil
@@ -262,10 +276,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case key.Matches(msg, AnimeInfoKeyMap.Exit):
 				return m, tea.Quit
+			case key.Matches(msg, AnimeInfoKeyMap.Select):
+				if m.ModifyEntry {
+					return m, nil
+				}
+				m.ModifyEntry = true
+				// We need a popup, for changing all the list info. sort of like a menu. something like that probably exists, but i dont know how to layer things with lipgloss, or if that's even possible. if it isn't, we can just render this instead of the description. if we're editing the info, the esc button can go back to the description instead of the table !!
+
+				// Nope. i have to make the menu all by myself. that's very difficult. uh oh.
+
+				// We can use a list bubble, it will have two layers
+				// Clicking on one will open either another list or a date picker for changing your options. pressing enter will save, exit to escape. there will also be a "Remove" option for completion to remove it from your list. if this option is selected, the other options will be ignored.
+
+				// I can use a selector actually! seems much more simple and better for what im working on. the same library has a prompt! i could use that prompt instead of the one im using now perhaps, but first i have to check if my current prompt crashing like it is is an HTTP issue or a library issue. let me do that now. ITS AN HTTP ERROR. IT DOESNT HAPPEN IN THE DB SEARCH. WHAT THE FREAK. let me try something
 			}
 		}
 		switch {
-		case key.Matches(msg, DefaultKeyMap.ChangeTab):
+		case key.Matches(msg, DefaultKeyMap.Tab):
 			if m.Typing {
 				return m, nil
 			}
@@ -320,7 +347,12 @@ func (m Model) View() string {
 
 	render := ""
 	if m.ShowAnimeInfo {
-		render += m.headerView(m.AnimeTitle) + "\n" + m.Viewport.View() + "\n"
+		render += m.headerView(m.AnimeTitle) + "\n"
+		if m.ModifyEntry {
+			render += "\n"
+		} else {
+			render += m.Viewport.View() + "\n"
+		}
 	} else {
 		render += baseStyle.Render(m.TextInput.View()) + "\n" + baseStyle.Render(m.Table.View()) + "\n"
 	}

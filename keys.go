@@ -11,7 +11,7 @@ type KeyMap struct {
 	Select    key.Binding
 	Esc       key.Binding
 	Help      key.Binding
-	ChangeTab key.Binding
+	Tab       key.Binding
 	AnimeInfo bool
 }
 
@@ -29,7 +29,7 @@ func (km KeyMap) FullHelp() [][]key.Binding {
 		}
 	}
 	return [][]key.Binding{
-		{km.Up, km.Down, km.Esc, km.ChangeTab},
+		{km.Up, km.Down, km.Esc, km.Tab},
 		{km.Exit, km.Select, km.Help},
 	}
 }
@@ -46,6 +46,10 @@ var AnimeInfoKeyMap = KeyMap{
 	Help: key.NewBinding(
 		key.WithKeys("?"),
 		key.WithHelp("?", "toggle help"),
+	),
+	Select: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "modify entry"),
 	),
 	AnimeInfo: true, // Probably a better way to implement this
 }
@@ -75,7 +79,7 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("?"),
 		key.WithHelp("?", "toggle help"),
 	),
-	ChangeTab: key.NewBinding(
+	Tab: key.NewBinding(
 		key.WithKeys("tab"),
 		key.WithHelp("tab", "change tab"),
 	),

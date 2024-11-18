@@ -249,9 +249,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.TextInput.Width = m.DefaultWidth / 3
 		m.Viewport.Width = m.DefaultWidth
 	case tea.KeyMsg:
+		// This causes just a TINY bit of code duplication, but the separation is worth it
+		if m.ShowAnimeInfo {
+			m.Table.Blur()
+			switch {
+			case key.Matches(msg, AnimeInfoKeyMap.Esc):
+				m.Table.Focus()
+				m.ShowAnimeInfo = false
+				return m, nil
+			case key.Matches(msg, AnimeInfoKeyMap.Help):
+				m.ShowHelp = !m.ShowHelp
+				return m, nil
+			case key.Matches(msg, AnimeInfoKeyMap.Exit):
+				return m, tea.Quit
+			}
+		}
 		switch {
 		case key.Matches(msg, DefaultKeyMap.ChangeTab):
-			if m.ShowAnimeInfo || m.Typing {
+			if m.Typing {
 				return m, nil
 			}
 
@@ -264,11 +279,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.DBConfig.showDBAnime()
 		case key.Matches(msg, DefaultKeyMap.Help):
 			m.ShowHelp = !m.ShowHelp
+			return m, nil
 		case key.Matches(msg, DefaultKeyMap.Esc):
-			if m.ShowAnimeInfo {
-				m.ShowAnimeInfo = false
-				return m, nil
-			}
 			m.Typing = !m.Typing
 			if m.Typing {
 				m.Table.Blur()
@@ -292,9 +304,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, searchAnimeByNameCmd(val)
 			}
-			if m.ShowAnimeInfo {
-				return m, nil
-			}
 			return m, getAnimeByIdCmd(m.Table.SelectedRow()[0])
 		}
 	}
@@ -316,7 +325,11 @@ func (m Model) View() string {
 		render += baseStyle.Render(m.TextInput.View()) + "\n" + baseStyle.Render(m.Table.View()) + "\n"
 	}
 	if m.ShowHelp {
-		render += m.Help.View(DefaultKeyMap) + "\n"
+		if m.ShowAnimeInfo {
+			render += m.Help.View(AnimeInfoKeyMap) + "\n"
+		} else {
+			render += m.Help.View(DefaultKeyMap) + "\n"
+		}
 	}
 	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, 0, render)
 }

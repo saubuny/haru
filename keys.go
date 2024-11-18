@@ -12,6 +12,7 @@ type KeyMap struct {
 	Esc       key.Binding
 	Help      key.Binding
 	ChangeTab key.Binding
+	AnimeInfo bool
 }
 
 // ShortHelp implements the KeyMap interface.
@@ -21,10 +22,32 @@ func (km KeyMap) ShortHelp() []key.Binding {
 
 // FullHelp implements the KeyMap interface.
 func (km KeyMap) FullHelp() [][]key.Binding {
+	if km.AnimeInfo {
+		return [][]key.Binding{
+			{km.Exit, km.Esc, km.Help},
+			{},
+		}
+	}
 	return [][]key.Binding{
 		{km.Up, km.Down, km.Esc, km.ChangeTab},
 		{km.Exit, km.Select, km.Help},
 	}
+}
+
+var AnimeInfoKeyMap = KeyMap{
+	Exit: key.NewBinding(
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("ctrl+c", "exit"),
+	),
+	Esc: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "go back"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "toggle help"),
+	),
+	AnimeInfo: true, // Probably a better way to implement this
 }
 
 var DefaultKeyMap = KeyMap{

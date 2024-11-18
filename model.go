@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"encoding/json"
 	"log"
@@ -135,11 +136,20 @@ func (cfg dbConfig) searchDBByNameCmd(searchString string) tea.Cmd {
 	}
 }
 
-// Breaks if there is a space in the search string ??????
 func searchAnimeByNameCmd(searchString string) tea.Cmd {
+	// Breaks from spaces, have to replace them
+	newSearchString := ""
+	for _, r := range searchString {
+		if unicode.IsSpace(r) {
+			newSearchString += "%20"
+		} else {
+			newSearchString += string(r)
+		}
+	}
+
 	return func() tea.Msg {
 		c := &http.Client{Timeout: 4 * time.Second}
-		res, err := c.Get("https://api.jikan.moe/v4/anime?q=" + searchString)
+		res, err := c.Get("https://api.jikan.moe/v4/anime?q=" + newSearchString)
 		if err != nil {
 			return ErrorMessage(err.Error())
 		}

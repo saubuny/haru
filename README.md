@@ -17,8 +17,10 @@
 
 I have had data stored across several tracking websites for years, and feel it'd be easier to just bring them all to one place and manage things from the terminal, where it's most convenient for me.
 
+This is my first real sizeable project, so the codebase might be a little messy :)
+
 ## Dev Requirements
 - Go (of course)
 - SQLC
-- Sqlite driver
+- Sqlite driver (mattn/go-sqlite3, must install instead of add)
 

@@ -28,6 +28,7 @@ type Model struct {
 	Height     int
 	Cursor     string
 	Styles     Styles
+	Active     bool
 }
 
 func New(selections []string) Model {
@@ -39,6 +40,7 @@ func New(selections []string) Model {
 		selections: selections,
 		KeyMap:     DefaultKeyMap(),
 		Styles:     DefaultStyles(),
+		Active:     true,
 	}
 }
 
@@ -88,7 +90,9 @@ func DefaultStyles() Styles {
 type SelectedMsg string
 
 func returnSelection(selection string) tea.Cmd {
+	// but it runs up here ?
 	return func() tea.Msg {
+		// for some reason, nothing inside this function is running
 		return SelectedMsg(selection)
 	}
 }
@@ -98,16 +102,17 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.Height = msg.Height
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, m.KeyMap.Up):
-			m.selected = clamp(m.selected-1, 0, len(m.selections)-1)
-			return m, nil
-		case key.Matches(msg, m.KeyMap.Down):
-			m.selected = clamp(m.selected+1, 0, len(m.selections)-1)
-			return m, nil
-		case key.Matches(msg, m.KeyMap.Select):
-			// Why is this not working ???
-			return m, returnSelection(m.selections[m.selected])
+		if m.Active {
+			switch {
+			case key.Matches(msg, m.KeyMap.Up):
+				m.selected = clamp(m.selected-1, 0, len(m.selections)-1)
+				return m, nil
+			case key.Matches(msg, m.KeyMap.Down):
+				m.selected = clamp(m.selected+1, 0, len(m.selections)-1)
+				return m, nil
+			case key.Matches(msg, m.KeyMap.Select):
+				return m, returnSelection(m.selections[m.selected])
+			}
 		}
 	}
 	return m, nil
@@ -124,11 +129,16 @@ func (m Model) View() string {
 		s.WriteRune('\n')
 	}
 
-	// for i := lipgloss.Height(s.String()); i <= m.Height; i++ {
-	// 	s.WriteRune('\n')
-	// }
-
 	return s.String()
+}
+
+// Stealing this from the table bubble
+func (m *Model) Blur() {
+	m.Active = false
+}
+
+func (m *Model) Focus() {
+	m.Active = true
 }
 
 func clamp(value, min, max int) int {

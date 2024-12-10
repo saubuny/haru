@@ -22,6 +22,11 @@ import (
 	"github.com/saubuny/haru/internal/selector"
 )
 
+const (
+	Completion = "Completion"
+	StartDate  = "Start Date"
+)
+
 var baseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
 
 var titleStyle = func() lipgloss.Style {
@@ -37,25 +42,29 @@ func (m Model) headerView(name string) string {
 }
 
 type Model struct {
-	TextInput                textinput.Model
-	Table                    table.Model
-	Help                     help.Model
-	Width                    int
-	Height                   int
-	Typing                   bool
-	ShowHelp                 bool
-	ShowAnimeInfo            bool
-	Viewport                 viewport.Model
-	AnimeTitle               string
-	DefaultWidth             int
-	DBConfig                 dbConfig
-	ShowDBInfo               bool
-	PreviousRows             AnimeListResponse
-	ModifyEntry              bool
-	ModifyEntrySelector      table.Model
-	ModifyCompletionSelector table.Model
-	ModifyStartDateInput     textinput.Model
-	Selector                 selector.Model
+	Width        int
+	Height       int
+	AnimeTitle   string
+	DefaultWidth int
+	DBConfig     dbConfig
+	PreviousRows AnimeListResponse
+
+	// Different bubbles !!
+	ModifySelector       selector.Model
+	CompletionSelector   selector.Model
+	ModifyStartDateInput textinput.Model
+	SearchInput          textinput.Model
+	Table                table.Model
+	Help                 help.Model
+	Viewport             viewport.Model
+
+	// These are for toggling visbility and controls of different bubbles. To be honest, they could be named better :)
+	ModifyEntry     bool
+	ModifyStartDate bool
+	ShowDBInfo      bool
+	Typing          bool
+	ShowHelp        bool
+	ShowAnimeInfo   bool
 }
 
 func initialModel(cfg dbConfig) Model {
@@ -86,15 +95,18 @@ func initialModel(cfg dbConfig) Model {
 	help := help.New()
 	help.ShowAll = true
 
-	sel := selector.New([]string{"Completion", "Start Date"})
+	sel1 := selector.New([]string{Completion, StartDate})
+	sel2 := selector.New([]string{Watching, PlanToWatch, Completed, OnHold, Dropped})
+	sel2.Blur()
 
 	return Model{
-		Table:     tb,
-		Help:      help,
-		TextInput: ti,
-		ShowHelp:  true,
-		DBConfig:  cfg,
-		Selector:  sel,
+		Table:              tb,
+		Help:               help,
+		SearchInput:        ti,
+		ShowHelp:           true,
+		DBConfig:           cfg,
+		ModifySelector:     sel1,
+		CompletionSelector: sel2,
 	}
 }
 
@@ -204,9 +216,17 @@ func (m Model) getTopAnime() tea.Msg {
 	return AnimeListMessage(topAnime)
 }
 
-func (cfg dbConfig) modifyEntry() tea.Cmd {
+func (m Model) modifyStartDate(date string) tea.Cmd {
+	// Make sure date is valid
+	log.Printf(date)
+	return func() tea.Msg {
+		return nil
+	}
+}
+
+func (m Model) modifyCompletion(completion string) tea.Cmd {
 	// Depending on input, either remove or add to DB
-	// the menu should be able
+	log.Printf(completion)
 	return func() tea.Msg {
 		return nil
 	}
@@ -272,24 +292,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.DefaultWidth = int(float64(m.Width) * 0.8)
 
 		// Height of help + search bar
-		// I really do think hardcoded values like this are bad but i dont know an alternative
+		// Yucky hardcoded values :(
 		m.Table.SetHeight(m.Height - 11)
-		m.TextInput.Width = m.DefaultWidth / 3
+		m.SearchInput.Width = m.DefaultWidth / 3
 		m.Viewport.Width = m.DefaultWidth
 	case selector.SelectedMsg:
-		if msg == "Completion" {
-			// Send "completion" msg with command that opens up another selector for completion
-			log.Printf("Selected %v\n", msg)
-		} else if msg == "Start Date" {
-			// Send "start date" msg with command that opens up input for date (and verifies that it is valid)
-			log.Printf("Selected %v\n", msg)
+		switch msg {
+		case Completion:
+			// TODO: Change to using KevM/bubbleo
+			m.ModifySelector.Blur()
+			m.CompletionSelector.Focus()
+			// Opens up another selector, which will send out its own selected message, which i can check here
+			// return m, modifyCompletion()
+		case StartDate:
+			m.ModifySelector.Blur()
+			// Make typing active, look at the search bar for how i did it earlier (although that'd be months ago atp) :3
+			// blah
+		case Watching, PlanToWatch, Completed, OnHold, Dropped:
+			m.CompletionSelector.Blur()
+			m.ModifySelector.Focus()
+			return m, m.modifyCompletion(string(msg))
 		}
 	case tea.KeyMsg:
-		// This causes code duplication, but the separation is worth it
+		// This causes a tiny bit of code duplication, but the separation is worth it
 		if m.ShowAnimeInfo {
 			m.Table.Blur()
 			switch {
 			case key.Matches(msg, AnimeInfoKeyMap.Esc):
+				if m.CompletionSelector.Active {
+					m.CompletionSelector.Blur()
+					m.ModifySelector.Focus()
+					return m, nil
+				}
+
+				if m.ModifyStartDate {
+					m.ModifyStartDateInput.Blur()
+					m.ModifySelector.Focus()
+					return m, nil
+				}
+
 				if m.ModifyEntry {
 					m.ModifyEntry = false
 					return m, nil
@@ -305,6 +346,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case !m.ModifyEntry && key.Matches(msg, AnimeInfoKeyMap.Select):
 				// Listening to for this here if m.ModifyEntry is true will block us from listening to the enter key inside the selector's update function, so we have to check that its false before matching the key
 				m.ModifyEntry = true
+				m.ModifySelector.Focus()
 				return m, nil
 			}
 		} else {
@@ -328,20 +370,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Typing = !m.Typing
 				if m.Typing {
 					m.Table.Blur()
-					m.TextInput.Focus()
+					m.SearchInput.Focus()
 				} else {
 					m.Table.Focus()
-					m.TextInput.Blur()
+					m.SearchInput.Blur()
 				}
 			case key.Matches(msg, DefaultKeyMap.Exit):
 				return m, tea.Quit
 			case key.Matches(msg, DefaultKeyMap.Select):
 				if m.Typing {
 					// Search for anime with new cmd
-					val := m.TextInput.Value()
-					m.TextInput.Reset()
+					val := m.SearchInput.Value()
+					m.SearchInput.Reset()
 					m.Table.Focus()
-					m.TextInput.Blur()
+					m.SearchInput.Blur()
 					m.Typing = !m.Typing
 					if m.ShowDBInfo {
 						return m, m.DBConfig.searchDBByNameCmd(val)
@@ -353,9 +395,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.Table, cmd = m.Table.Update(msg)
-	m.TextInput, cmd = m.TextInput.Update(msg)
+	m.SearchInput, cmd = m.SearchInput.Update(msg)
 	m.Viewport, cmd = m.Viewport.Update(msg)
-	m.Selector, cmd = m.Selector.Update(msg)
+	m.ModifySelector, cmd = m.ModifySelector.Update(msg)
+	m.CompletionSelector, cmd = m.CompletionSelector.Update(msg)
 	return m, cmd
 }
 
@@ -368,12 +411,15 @@ func (m Model) View() string {
 	if m.ShowAnimeInfo {
 		render += m.headerView(m.AnimeTitle) + "\n"
 		if m.ModifyEntry {
-			render += m.Selector.View() + "\n"
+			render += m.ModifySelector.View() + "\n"
+			if m.CompletionSelector.Active {
+				render += m.CompletionSelector.View() + "\n"
+			}
 		} else {
 			render += m.Viewport.View() + "\n"
 		}
 	} else {
-		render += baseStyle.Render(m.TextInput.View()) + "\n" + baseStyle.Render(m.Table.View()) + "\n"
+		render += baseStyle.Render(m.SearchInput.View()) + "\n" + baseStyle.Render(m.Table.View()) + "\n"
 	}
 	if m.ShowHelp {
 		if m.ModifyEntry {

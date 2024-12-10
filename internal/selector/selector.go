@@ -6,6 +6,8 @@ package selector
 // Can simply select an option and give you that option
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -28,24 +30,19 @@ type Model struct {
 	Styles     Styles
 }
 
-func New() Model {
+func New(selections []string) Model {
 	return Model{
 		id:         nextID(),
-		Cursor:     ">",
+		Cursor:     "> ",
 		Height:     0,
 		selected:   0,
-		selections: []string{},
+		selections: selections,
 		KeyMap:     DefaultKeyMap(),
 		Styles:     DefaultStyles(),
 	}
 }
 
 type SelectedMsg string
-
-const (
-	marginBottom = 5
-	paddingLeft  = 2
-)
 
 type KeyMap struct {
 	Up     key.Binding
@@ -95,14 +92,32 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.KeyMap.Up):
-			m.selected = clamp(m.selected+1, 0, len(m.selections))
+			m.selected = clamp(m.selected-1, 0, len(m.selections)-1)
 		case key.Matches(msg, m.KeyMap.Down):
-			m.selected = clamp(m.selected-1, 0, len(m.selections))
+			m.selected = clamp(m.selected+1, 0, len(m.selections)-1)
 		case key.Matches(msg, m.KeyMap.Select):
 			return m, returnSelection(m.selections[m.selected])
 		}
 	}
 	return m, nil
+}
+
+func (m Model) View() string {
+	var s strings.Builder
+	for i, item := range m.selections {
+		if m.selected == i {
+			s.WriteString(m.Styles.Cursor.Render(m.Cursor) + item)
+		} else {
+			s.WriteString("  " + item)
+		}
+		s.WriteRune('\n')
+	}
+
+	// for i := lipgloss.Height(s.String()); i <= m.Height; i++ {
+	// 	s.WriteRune('\n')
+	// }
+
+	return s.String()
 }
 
 func clamp(value, min, max int) int {

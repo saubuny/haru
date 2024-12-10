@@ -19,6 +19,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/saubuny/haru/internal/database"
+	"github.com/saubuny/haru/internal/selector"
 )
 
 var baseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
@@ -36,21 +37,25 @@ func (m Model) headerView(name string) string {
 }
 
 type Model struct {
-	TextInput     textinput.Model
-	Table         table.Model
-	Help          help.Model
-	Width         int
-	Height        int
-	Typing        bool
-	ShowHelp      bool
-	ShowAnimeInfo bool
-	Viewport      viewport.Model
-	AnimeTitle    string
-	DefaultWidth  int
-	DBConfig      dbConfig
-	ShowDBInfo    bool
-	PreviousRows  AnimeListResponse
-	ModifyEntry   bool
+	TextInput                textinput.Model
+	Table                    table.Model
+	Help                     help.Model
+	Width                    int
+	Height                   int
+	Typing                   bool
+	ShowHelp                 bool
+	ShowAnimeInfo            bool
+	Viewport                 viewport.Model
+	AnimeTitle               string
+	DefaultWidth             int
+	DBConfig                 dbConfig
+	ShowDBInfo               bool
+	PreviousRows             AnimeListResponse
+	ModifyEntry              bool
+	ModifyEntrySelector      table.Model
+	ModifyCompletionSelector table.Model
+	ModifyStartDateInput     textinput.Model
+	Selector                 selector.Model
 }
 
 func initialModel(cfg dbConfig) Model {
@@ -81,12 +86,15 @@ func initialModel(cfg dbConfig) Model {
 	help := help.New()
 	help.ShowAll = true
 
+	sel := selector.New([]string{"Completion", "Start Date"})
+
 	return Model{
 		Table:     tb,
 		Help:      help,
 		TextInput: ti,
 		ShowHelp:  true,
 		DBConfig:  cfg,
+		Selector:  sel,
 	}
 }
 
@@ -291,14 +299,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.ModifyEntry = true
-				// We need a popup, for changing all the list info. sort of like a menu. something like that probably exists, but i dont know how to layer things with lipgloss, or if that's even possible. if it isn't, we can just render this instead of the description. if we're editing the info, the esc button can go back to the description instead of the table !!
 
-				// Nope. i have to make the menu all by myself. that's very difficult. uh oh.
+				// TODO: Extract custom selector into own library
+				// Perhaps i can have a selector open the selected option below it. that would work, since theres only two options.
 
-				// We can use a list bubble, it will have two layers
-				// Clicking on one will open either another list or a date picker for changing your options. pressing enter will save, exit to escape. there will also be a "Remove" option for completion to remove it from your list. if this option is selected, the other options will be ignored.
+				// You've finished the selector !! time to put it to use !!
 
-				// I can use a selector actually! seems much more simple and better for what im working on. the same library has a prompt! i could use that prompt instead of the one im using now perhaps, but first i have to check if my current prompt crashing like it is is an HTTP issue or a library issue. let me do that now. ITS AN HTTP ERROR. IT DOESNT HAPPEN IN THE DB SEARCH. WHAT THE FREAK. let me try something
+				// Should probably create this NOT in the update function
+
+				// if err != nil {
+				// 	return m, func() tea.Msg { return ErrorMessage(err.Error()) }
+				// }
+				//
+				// if choice == "Completion" {
+				// 	// Send out message to open completion selector
+				// }
+				//
+				// if choice == "Start Date" {
+				// 	// Send out message to open start date input
+				// }
+
+				return m, nil
 			}
 		}
 		switch {
@@ -347,6 +368,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.Table, cmd = m.Table.Update(msg)
 	m.TextInput, cmd = m.TextInput.Update(msg)
 	m.Viewport, cmd = m.Viewport.Update(msg)
+	m.Selector, cmd = m.Selector.Update(msg)
 	return m, cmd
 }
 
@@ -359,7 +381,7 @@ func (m Model) View() string {
 	if m.ShowAnimeInfo {
 		render += m.headerView(m.AnimeTitle) + "\n"
 		if m.ModifyEntry {
-			render += "\n"
+			render += m.Selector.View() + "\n"
 		} else {
 			render += m.Viewport.View() + "\n"
 		}
@@ -367,6 +389,9 @@ func (m Model) View() string {
 		render += baseStyle.Render(m.TextInput.View()) + "\n" + baseStyle.Render(m.Table.View()) + "\n"
 	}
 	if m.ShowHelp {
+		//  if m.ModifyEntry {
+		//     render += m.Help.View(ModifyEntryKeyMap) + "\n"
+		// }
 		if m.ShowAnimeInfo {
 			render += m.Help.View(AnimeInfoKeyMap) + "\n"
 		} else {

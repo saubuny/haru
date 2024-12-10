@@ -25,7 +25,7 @@ func (km KeyMap) FullHelp() [][]key.Binding {
 	if km.AnimeInfo {
 		return [][]key.Binding{
 			{km.Exit, km.Esc, km.Help},
-			{},
+			{km.Select},
 		}
 	}
 	return [][]key.Binding{

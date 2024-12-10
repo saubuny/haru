@@ -11,6 +11,8 @@ import (
 	"github.com/saubuny/haru/internal/database"
 )
 
+// TODO: Func for udpating data
+
 // TODO: input custom db location (like ~/.haru/anime.db)
 // TODO: have separate table for manga !!
 func initDB(schema string, location string) (dbConfig, error) {
@@ -65,6 +67,7 @@ func (cfg dbConfig) uploadToDB(title string, id int, startDate string, completio
 }
 
 // Kitsu also exports in the MAL format
+// Kitsu needs to make an HTTP request for EVERY entry. we can use a COOL BUBBLES PROGRESS BAR FOR THAT :fire:
 func (cfg dbConfig) importMAL(malXml []byte) error {
 	var animeList Myanimelist
 	if err := xml.Unmarshal(malXml, &animeList); err != nil {

@@ -42,12 +42,18 @@ func New(selections []string) Model {
 	}
 }
 
-type SelectedMsg string
-
 type KeyMap struct {
 	Up     key.Binding
 	Down   key.Binding
 	Select key.Binding
+}
+
+func (km KeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{km.Up, km.Down, km.Select}
+}
+
+func (km KeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{{km.Up, km.Down}, {km.Select}}
 }
 
 func DefaultKeyMap() KeyMap {
@@ -79,6 +85,8 @@ func DefaultStyles() Styles {
 	}
 }
 
+type SelectedMsg string
+
 func returnSelection(selection string) tea.Cmd {
 	return func() tea.Msg {
 		return SelectedMsg(selection)
@@ -93,9 +101,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.KeyMap.Up):
 			m.selected = clamp(m.selected-1, 0, len(m.selections)-1)
+			return m, nil
 		case key.Matches(msg, m.KeyMap.Down):
 			m.selected = clamp(m.selected+1, 0, len(m.selections)-1)
+			return m, nil
 		case key.Matches(msg, m.KeyMap.Select):
+			// Why is this not working ???
 			return m, returnSelection(m.selections[m.selected])
 		}
 	}

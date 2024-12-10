@@ -276,8 +276,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Table.SetHeight(m.Height - 11)
 		m.TextInput.Width = m.DefaultWidth / 3
 		m.Viewport.Width = m.DefaultWidth
+	case selector.SelectedMsg:
+		if msg == "Completion" {
+			// Send "completion" msg with command that opens up another selector for completion
+			log.Printf("Selected %v\n", msg)
+		} else if msg == "Start Date" {
+			// Send "start date" msg with command that opens up input for date (and verifies that it is valid)
+			log.Printf("Selected %v\n", msg)
+		}
 	case tea.KeyMsg:
-		// This causes just a TINY bit of code duplication, but the separation is worth it
+		// This causes code duplication, but the separation is worth it
 		if m.ShowAnimeInfo {
 			m.Table.Blur()
 			switch {
@@ -294,75 +302,54 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case key.Matches(msg, AnimeInfoKeyMap.Exit):
 				return m, tea.Quit
-			case key.Matches(msg, AnimeInfoKeyMap.Select):
-				if m.ModifyEntry {
+			case !m.ModifyEntry && key.Matches(msg, AnimeInfoKeyMap.Select):
+				// Listening to for this here if m.ModifyEntry is true will block us from listening to the enter key inside the selector's update function, so we have to check that its false before matching the key
+				m.ModifyEntry = true
+				return m, nil
+			}
+		} else {
+			switch {
+			case key.Matches(msg, DefaultKeyMap.Tab):
+				if m.Typing {
 					return m, nil
 				}
-				m.ModifyEntry = true
 
-				// TODO: Extract custom selector into own library
-				// Perhaps i can have a selector open the selected option below it. that would work, since theres only two options.
-
-				// You've finished the selector !! time to put it to use !!
-
-				// Should probably create this NOT in the update function
-
-				// if err != nil {
-				// 	return m, func() tea.Msg { return ErrorMessage(err.Error()) }
-				// }
-				//
-				// if choice == "Completion" {
-				// 	// Send out message to open completion selector
-				// }
-				//
-				// if choice == "Start Date" {
-				// 	// Send out message to open start date input
-				// }
-
-				return m, nil
-			}
-		}
-		switch {
-		case key.Matches(msg, DefaultKeyMap.Tab):
-			if m.Typing {
-				return m, nil
-			}
-
-			if m.ShowDBInfo {
-				m.ShowDBInfo = false
-				return m, m.getTopAnime
-			}
-
-			m.ShowDBInfo = true
-			return m, m.DBConfig.showDBAnime()
-		case key.Matches(msg, DefaultKeyMap.Help):
-			m.ShowHelp = !m.ShowHelp
-			return m, nil
-		case key.Matches(msg, DefaultKeyMap.Esc):
-			m.Typing = !m.Typing
-			if m.Typing {
-				m.Table.Blur()
-				m.TextInput.Focus()
-			} else {
-				m.Table.Focus()
-				m.TextInput.Blur()
-			}
-		case key.Matches(msg, DefaultKeyMap.Exit):
-			return m, tea.Quit
-		case key.Matches(msg, DefaultKeyMap.Select):
-			if m.Typing {
-				// Search for anime with new cmd
-				val := m.TextInput.Value()
-				m.TextInput.Reset()
-				m.Table.Focus()
-				m.TextInput.Blur()
-				m.Typing = !m.Typing
 				if m.ShowDBInfo {
-					return m, m.DBConfig.searchDBByNameCmd(val)
+					m.ShowDBInfo = false
+					return m, m.getTopAnime
 				}
-				return m, searchAnimeByNameCmd(val)
+
+				m.ShowDBInfo = true
+				return m, m.DBConfig.showDBAnime()
+			case key.Matches(msg, DefaultKeyMap.Help):
+				m.ShowHelp = !m.ShowHelp
+				return m, nil
+			case key.Matches(msg, DefaultKeyMap.Esc):
+				m.Typing = !m.Typing
+				if m.Typing {
+					m.Table.Blur()
+					m.TextInput.Focus()
+				} else {
+					m.Table.Focus()
+					m.TextInput.Blur()
+				}
+			case key.Matches(msg, DefaultKeyMap.Exit):
+				return m, tea.Quit
+			case key.Matches(msg, DefaultKeyMap.Select):
+				if m.Typing {
+					// Search for anime with new cmd
+					val := m.TextInput.Value()
+					m.TextInput.Reset()
+					m.Table.Focus()
+					m.TextInput.Blur()
+					m.Typing = !m.Typing
+					if m.ShowDBInfo {
+						return m, m.DBConfig.searchDBByNameCmd(val)
+					}
+					return m, searchAnimeByNameCmd(val)
+				}
+				return m, getAnimeByIdCmd(m.Table.SelectedRow()[0])
 			}
-			return m, getAnimeByIdCmd(m.Table.SelectedRow()[0])
 		}
 	}
 	m.Table, cmd = m.Table.Update(msg)
@@ -389,10 +376,9 @@ func (m Model) View() string {
 		render += baseStyle.Render(m.TextInput.View()) + "\n" + baseStyle.Render(m.Table.View()) + "\n"
 	}
 	if m.ShowHelp {
-		//  if m.ModifyEntry {
-		//     render += m.Help.View(ModifyEntryKeyMap) + "\n"
-		// }
-		if m.ShowAnimeInfo {
+		if m.ModifyEntry {
+			render += m.Help.View(ModifyInfoKeyMap) + "\n"
+		} else if m.ShowAnimeInfo {
 			render += m.Help.View(AnimeInfoKeyMap) + "\n"
 		} else {
 			render += m.Help.View(DefaultKeyMap) + "\n"

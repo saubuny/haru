@@ -5,14 +5,17 @@ import (
 )
 
 type KeyMap struct {
-	Up        key.Binding
-	Down      key.Binding
-	Exit      key.Binding
-	Select    key.Binding
-	Esc       key.Binding
-	Help      key.Binding
-	Tab       key.Binding
-	AnimeInfo bool
+	Up     key.Binding
+	Down   key.Binding
+	Exit   key.Binding
+	Select key.Binding
+	Esc    key.Binding
+	Help   key.Binding
+	Tab    key.Binding
+
+	// There REALLY has to be a better way than doing this... but it works :D
+	AnimeInfo  bool
+	ModifyInfo bool
 }
 
 // ShortHelp implements the KeyMap interface.
@@ -22,6 +25,12 @@ func (km KeyMap) ShortHelp() []key.Binding {
 
 // FullHelp implements the KeyMap interface.
 func (km KeyMap) FullHelp() [][]key.Binding {
+	if km.ModifyInfo {
+		return [][]key.Binding{
+			{km.Exit, km.Esc, km.Help},
+			{km.Up, km.Down, km.Select},
+		}
+	}
 	if km.AnimeInfo {
 		return [][]key.Binding{
 			{km.Exit, km.Esc, km.Help},
@@ -32,6 +41,34 @@ func (km KeyMap) FullHelp() [][]key.Binding {
 		{km.Up, km.Down, km.Esc, km.Tab},
 		{km.Exit, km.Select, km.Help},
 	}
+}
+
+var ModifyInfoKeyMap = KeyMap{
+	Up: key.NewBinding(
+		key.WithKeys("k", "up"),
+		key.WithHelp("↑/k", "move up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("j", "down"),
+		key.WithHelp("↓/j", "move down"),
+	),
+	Exit: key.NewBinding(
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("ctrl+c", "exit"),
+	),
+	Esc: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "go back"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "toggle help"),
+	),
+	Select: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "select"),
+	),
+	ModifyInfo: true,
 }
 
 var AnimeInfoKeyMap = KeyMap{
@@ -51,7 +88,7 @@ var AnimeInfoKeyMap = KeyMap{
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "modify entry"),
 	),
-	AnimeInfo: true, // Probably a better way to implement this
+	AnimeInfo: true,
 }
 
 var DefaultKeyMap = KeyMap{

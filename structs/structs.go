@@ -1,6 +1,4 @@
-package main
-
-// TODO: Delete this file
+package structs
 
 import (
 	"encoding/xml"

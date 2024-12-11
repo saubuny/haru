@@ -19,8 +19,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/kevm/bubbleo/menu"
-	// "github.com/kevm/bubbleo/navstack"
+	"github.com/kevm/bubbleo/navstack"
 	"github.com/kevm/bubbleo/shell"
+	// "github.com/kevm/bubbleo/utils"
+	"github.com/saubuny/haru/animeinfo"
 	"github.com/saubuny/haru/color"
 	"github.com/saubuny/haru/internal/database"
 )
@@ -58,7 +60,9 @@ type Model struct {
 	SearchInput textinput.Model
 	Table       table.Model
 	Help        help.Model
-	Viewport    viewport.Model
+	// Viewport    viewport.Model
+
+	AnimeInfo animeinfo.Model
 
 	// These are for toggling visbility and controls of different bubbles. Might not be the best way to do things...
 	// TODO: I bet you could use a navstack for all of these. maybe try that out :D
@@ -119,6 +123,10 @@ func initialModel(cfg dbConfig) Model {
 		DBConfig:    cfg,
 		ModifyMenu:  menu.New("Modify Entry", choices, nil),
 		Shell:       shell.New(),
+		AnimeInfo: animeinfo.Model{
+			Viewport: viewport.New(0, 0),
+			ShowHelp: true,
+		},
 	}
 }
 
@@ -139,15 +147,15 @@ func getAnimeById(id string) (AnimeDataResponse, error) {
 	return anime, nil
 }
 
-func getAnimeByIdCmd(id string) tea.Cmd {
-	return func() tea.Msg {
-		anime, err := getAnimeById(id)
-		if err != nil {
-			return ErrorMessage(err.Error())
-		}
-		return AnimeDataMessage(anime)
-	}
-}
+// func getAnimeByIdCmd(id string) tea.Cmd {
+// 	return func() tea.Msg {
+// 		anime, err := getAnimeById(id)
+// 		if err != nil {
+// 			return ErrorMessage(err.Error())
+// 		}
+// 		return AnimeDataMessage(anime)
+// 	}
+// }
 
 func (cfg dbConfig) searchDBByNameCmd(searchString string) tea.Cmd {
 	return func() tea.Msg {
@@ -246,7 +254,6 @@ func (m Model) modifyCompletion(completion string) tea.Cmd {
 
 type AnimeListMessage AnimeListResponse
 type AnimeDBListMessage []database.Anime
-type AnimeDataMessage AnimeDataResponse
 type ErrorMessage string
 
 func (m Model) Init() tea.Cmd {
@@ -294,6 +301,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Table.SetCursor(0)
 		return m, nil
 	// case AnimeDataMessage:
+	// 	// Make own bubble
 	// 	m.ShowAnimeInfo = true
 	// 	m.AnimeTitle = msg.Data.Title
 	//
@@ -399,12 +407,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Replace with navstack ?
 			// return m, getAnimeByIdCmd(m.Table.SelectedRow()[0])
+			return m, m.Shell.Navstack.Push(navstack.NavigationItem{
+				Title: "Anime Info",
+				Model: m.AnimeInfo,
+			})
 		}
 		// }
 	}
 	m.Table, cmd = m.Table.Update(msg)
 	m.SearchInput, cmd = m.SearchInput.Update(msg)
-	m.Viewport, cmd = m.Viewport.Update(msg)
+	updatedanimeinfo, cmd := m.AnimeInfo.Update(msg)
+	m.AnimeInfo = updatedanimeinfo.(animeinfo.Model)
 	// updatedmenu, cmd := m.ModifyMenu.Update(msg)
 	// m.ModifyMenu = updatedmenu.(menu.Model)
 	return m, cmd

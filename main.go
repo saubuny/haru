@@ -13,6 +13,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/urfave/cli/v2"
+
+	"github.com/kevm/bubbleo/navstack"
 )
 
 type dbConfig struct {
@@ -37,7 +39,9 @@ func main() {
 		Name:  "Haru",
 		Usage: "Track anime",
 		Action: func(ctx *cli.Context) error {
-			p := tea.NewProgram(initialModel(cfg), tea.WithAltScreen())
+			m := initialModel(cfg)
+			m.Shell.Navstack.Push(navstack.NavigationItem{Model: m, Title: "Haru"})
+			p := tea.NewProgram(m.Shell, tea.WithAltScreen())
 			tea.SetWindowTitle("Haru")
 			if _, err := p.Run(); err != nil {
 				log.Fatalf("Error: %v", err)

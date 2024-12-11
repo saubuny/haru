@@ -20,6 +20,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/saubuny/haru/internal/database"
 	"github.com/saubuny/haru/internal/selector"
+	// "github.com/kevm/bubbleo/menu"
+	// "github.com/kevm/bubbleo/navstack"
+	// "github.com/kevm/bubbleo/shell"
 )
 
 const (
@@ -50,21 +53,17 @@ type Model struct {
 	PreviousRows AnimeListResponse
 
 	// Different bubbles !!
-	ModifySelector       selector.Model
-	CompletionSelector   selector.Model
-	ModifyStartDateInput textinput.Model
-	SearchInput          textinput.Model
-	Table                table.Model
-	Help                 help.Model
-	Viewport             viewport.Model
+	SearchInput textinput.Model
+	Table       table.Model
+	Help        help.Model
+	Viewport    viewport.Model
 
 	// These are for toggling visbility and controls of different bubbles. To be honest, they could be named better :)
-	ModifyEntry     bool
-	ModifyStartDate bool
-	ShowDBInfo      bool
-	Typing          bool
-	ShowHelp        bool
-	ShowAnimeInfo   bool
+	ShowModifyMenu   bool
+	FocusSearchInput bool
+	ShowDBInfo       bool
+	ShowHelp         bool
+	ShowAnimeInfo    bool
 }
 
 func initialModel(cfg dbConfig) Model {
@@ -95,18 +94,12 @@ func initialModel(cfg dbConfig) Model {
 	help := help.New()
 	help.ShowAll = true
 
-	sel1 := selector.New([]string{Completion, StartDate})
-	sel2 := selector.New([]string{Watching, PlanToWatch, Completed, OnHold, Dropped})
-	sel2.Blur()
-
 	return Model{
-		Table:              tb,
-		Help:               help,
-		SearchInput:        ti,
-		ShowHelp:           true,
-		DBConfig:           cfg,
-		ModifySelector:     sel1,
-		CompletionSelector: sel2,
+		Table:       tb,
+		Help:        help,
+		SearchInput: ti,
+		ShowHelp:    true,
+		DBConfig:    cfg,
 	}
 }
 
@@ -300,17 +293,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg {
 		case Completion:
 			// TODO: Change to using KevM/bubbleo
-			m.ModifySelector.Blur()
-			m.CompletionSelector.Focus()
 			// Opens up another selector, which will send out its own selected message, which i can check here
 			// return m, modifyCompletion()
 		case StartDate:
-			m.ModifySelector.Blur()
 			// Make typing active, look at the search bar for how i did it earlier (although that'd be months ago atp) :3
 			// blah
 		case Watching, PlanToWatch, Completed, OnHold, Dropped:
-			m.CompletionSelector.Blur()
-			m.ModifySelector.Focus()
 			return m, m.modifyCompletion(string(msg))
 		}
 	case tea.KeyMsg:
@@ -319,20 +307,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Table.Blur()
 			switch {
 			case key.Matches(msg, AnimeInfoKeyMap.Esc):
-				if m.CompletionSelector.Active {
-					m.CompletionSelector.Blur()
-					m.ModifySelector.Focus()
-					return m, nil
-				}
-
-				if m.ModifyStartDate {
-					m.ModifyStartDateInput.Blur()
-					m.ModifySelector.Focus()
-					return m, nil
-				}
-
-				if m.ModifyEntry {
-					m.ModifyEntry = false
+				if m.ShowModifyMenu {
+					m.ShowModifyMenu = false
 					return m, nil
 				}
 				m.Table.Focus()
@@ -343,16 +319,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case key.Matches(msg, AnimeInfoKeyMap.Exit):
 				return m, tea.Quit
-			case !m.ModifyEntry && key.Matches(msg, AnimeInfoKeyMap.Select):
-				// Listening to for this here if m.ModifyEntry is true will block us from listening to the enter key inside the selector's update function, so we have to check that its false before matching the key
-				m.ModifyEntry = true
-				m.ModifySelector.Focus()
+			case !m.ShowModifyMenu && key.Matches(msg, AnimeInfoKeyMap.Select):
+				m.ShowModifyMenu = true
 				return m, nil
 			}
 		} else {
 			switch {
 			case key.Matches(msg, DefaultKeyMap.Tab):
-				if m.Typing {
+				if m.FocusSearchInput {
 					return m, nil
 				}
 
@@ -367,8 +341,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ShowHelp = !m.ShowHelp
 				return m, nil
 			case key.Matches(msg, DefaultKeyMap.Esc):
-				m.Typing = !m.Typing
-				if m.Typing {
+				m.FocusSearchInput = !m.FocusSearchInput
+				if m.FocusSearchInput {
 					m.Table.Blur()
 					m.SearchInput.Focus()
 				} else {
@@ -378,13 +352,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, DefaultKeyMap.Exit):
 				return m, tea.Quit
 			case key.Matches(msg, DefaultKeyMap.Select):
-				if m.Typing {
+				if m.FocusSearchInput {
 					// Search for anime with new cmd
 					val := m.SearchInput.Value()
 					m.SearchInput.Reset()
 					m.Table.Focus()
 					m.SearchInput.Blur()
-					m.Typing = !m.Typing
+					m.FocusSearchInput = !m.FocusSearchInput
 					if m.ShowDBInfo {
 						return m, m.DBConfig.searchDBByNameCmd(val)
 					}
@@ -397,8 +371,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.Table, cmd = m.Table.Update(msg)
 	m.SearchInput, cmd = m.SearchInput.Update(msg)
 	m.Viewport, cmd = m.Viewport.Update(msg)
-	m.ModifySelector, cmd = m.ModifySelector.Update(msg)
-	m.CompletionSelector, cmd = m.CompletionSelector.Update(msg)
 	return m, cmd
 }
 
@@ -410,11 +382,11 @@ func (m Model) View() string {
 	render := ""
 	if m.ShowAnimeInfo {
 		render += m.headerView(m.AnimeTitle) + "\n"
-		if m.ModifyEntry {
-			render += m.ModifySelector.View() + "\n"
-			if m.CompletionSelector.Active {
-				render += m.CompletionSelector.View() + "\n"
-			}
+		if m.ShowModifyMenu {
+			// render += m.ModifySelector.View() + "\n"
+			// if m.CompletionSelector.Active {
+			// 	render += m.CompletionSelector.View() + "\n"
+			// }
 		} else {
 			render += m.Viewport.View() + "\n"
 		}
@@ -422,7 +394,7 @@ func (m Model) View() string {
 		render += baseStyle.Render(m.SearchInput.View()) + "\n" + baseStyle.Render(m.Table.View()) + "\n"
 	}
 	if m.ShowHelp {
-		if m.ModifyEntry {
+		if m.ShowModifyMenu {
 			render += m.Help.View(ModifyInfoKeyMap) + "\n"
 		} else if m.ShowAnimeInfo {
 			render += m.Help.View(AnimeInfoKeyMap) + "\n"

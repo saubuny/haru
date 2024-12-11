@@ -61,6 +61,7 @@ type Model struct {
 	Viewport    viewport.Model
 
 	// These are for toggling visbility and controls of different bubbles. Might not be the best way to do things...
+	// TODO: I bet you could use a navstack for all of these. maybe try that out :D
 	ShowModifyMenu   bool
 	FocusSearchInput bool
 	ShowDBInfo       bool
@@ -292,14 +293,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Table.SetRows(rows)
 		m.Table.SetCursor(0)
 		return m, nil
-	case AnimeDataMessage:
-		m.ShowAnimeInfo = true
-		m.AnimeTitle = msg.Data.Title
-
-		content := msg.Data.Synopsis
-		m.Viewport = viewport.New(m.DefaultWidth, m.Table.Height()+4)
-		m.Viewport.SetContent(content)
-		return m, nil
+	// case AnimeDataMessage:
+	// 	m.ShowAnimeInfo = true
+	// 	m.AnimeTitle = msg.Data.Title
+	//
+	// 	content := msg.Data.Synopsis
+	// 	m.Viewport = viewport.New(m.DefaultWidth, m.Table.Height()+4)
+	// 	m.Viewport.SetContent(content)
+	// 	return m, nil
 	case tea.WindowSizeMsg:
 		m.Width = msg.Width
 		m.Height = msg.Height
@@ -309,16 +310,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Yucky hardcoded values :(
 		m.Table.SetHeight(m.Height - 11)
 		m.SearchInput.Width = m.DefaultWidth / 3
-		m.Viewport.Width = m.DefaultWidth
+		// m.Viewport.Width = m.DefaultWidth
 
 		// This thing takes in the whole message for some reason, making it difficult to change the height
-		m.ModifyMenu.SetSize(tea.WindowSizeMsg{
-			Height: msg.Height - 11,
-			Width:  msg.Width,
-		})
+		// m.ModifyMenu.SetSize(tea.WindowSizeMsg{
+		// 	Height: msg.Height - 11,
+		// 	Width:  msg.Width,
+		// })
 		return m, nil
-	case color.ColorSelected:
-		log.Println(msg.RGB)
+	// case color.ColorSelected:
+	// 	return m, tea.Quit
 	// case selector.SelectedMsg:
 	// 	switch msg {
 	// 	case Completion:
@@ -333,76 +334,79 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// 	}
 	case tea.KeyMsg:
 		// This causes a tiny bit of code duplication, but the separation is worth it
-		if m.ShowAnimeInfo {
-			m.Table.Blur()
-			switch {
-			case key.Matches(msg, AnimeInfoKeyMap.Esc):
-				if m.ShowModifyMenu {
-					m.ShowModifyMenu = false
-					return m, nil
-				}
+		// if m.ShowModifyMenu {
+		// 	// Blah
+		// } else if m.ShowAnimeInfo {
+		// 	m.Table.Blur()
+		// 	switch {
+		// 	case key.Matches(msg, AnimeInfoKeyMap.Esc):
+		// 		// if m.ShowModifyMenu {
+		// 		// 	m.ShowModifyMenu = false
+		// 		// 	return m, nil
+		// 		// }
+		// 		m.Table.Focus()
+		// 		m.ShowAnimeInfo = false
+		// 		return m, nil
+		// 	case key.Matches(msg, AnimeInfoKeyMap.Help):
+		// 		m.ShowHelp = !m.ShowHelp
+		// 		return m, nil
+		// 	case key.Matches(msg, AnimeInfoKeyMap.Exit):
+		// 		return m, tea.Quit
+		// 	case key.Matches(msg, AnimeInfoKeyMap.Select):
+		// 		m.ShowModifyMenu = true
+		// 		return m, nil
+		// 	}
+		// } else {
+		switch {
+		case key.Matches(msg, DefaultKeyMap.Tab):
+			if m.FocusSearchInput {
+				return m, nil
+			}
+
+			if m.ShowDBInfo {
+				m.ShowDBInfo = false
+				return m, m.getTopAnime
+			}
+
+			m.ShowDBInfo = true
+			return m, m.DBConfig.showDBAnime()
+		case key.Matches(msg, DefaultKeyMap.Help):
+			m.ShowHelp = !m.ShowHelp
+			return m, nil
+		case key.Matches(msg, DefaultKeyMap.Esc):
+			m.FocusSearchInput = !m.FocusSearchInput
+			if m.FocusSearchInput {
+				m.Table.Blur()
+				m.SearchInput.Focus()
+			} else {
 				m.Table.Focus()
-				m.ShowAnimeInfo = false
-				return m, nil
-			case key.Matches(msg, AnimeInfoKeyMap.Help):
-				m.ShowHelp = !m.ShowHelp
-				return m, nil
-			case key.Matches(msg, AnimeInfoKeyMap.Exit):
-				return m, tea.Quit
-			case !m.ShowModifyMenu && key.Matches(msg, AnimeInfoKeyMap.Select):
-				m.ShowModifyMenu = true
-				return m, nil
+				m.SearchInput.Blur()
 			}
-		} else {
-			switch {
-			case key.Matches(msg, DefaultKeyMap.Tab):
-				if m.FocusSearchInput {
-					return m, nil
-				}
-
-				if m.ShowDBInfo {
-					m.ShowDBInfo = false
-					return m, m.getTopAnime
-				}
-
-				m.ShowDBInfo = true
-				return m, m.DBConfig.showDBAnime()
-			case key.Matches(msg, DefaultKeyMap.Help):
-				m.ShowHelp = !m.ShowHelp
-				return m, nil
-			case key.Matches(msg, DefaultKeyMap.Esc):
+		case key.Matches(msg, DefaultKeyMap.Exit):
+			return m, tea.Quit
+		case key.Matches(msg, DefaultKeyMap.Select):
+			if m.FocusSearchInput {
+				// Search for anime with new cmd
+				val := m.SearchInput.Value()
+				m.SearchInput.Reset()
+				m.Table.Focus()
+				m.SearchInput.Blur()
 				m.FocusSearchInput = !m.FocusSearchInput
-				if m.FocusSearchInput {
-					m.Table.Blur()
-					m.SearchInput.Focus()
-				} else {
-					m.Table.Focus()
-					m.SearchInput.Blur()
+				if m.ShowDBInfo {
+					return m, m.DBConfig.searchDBByNameCmd(val)
 				}
-			case key.Matches(msg, DefaultKeyMap.Exit):
-				return m, tea.Quit
-			case key.Matches(msg, DefaultKeyMap.Select):
-				if m.FocusSearchInput {
-					// Search for anime with new cmd
-					val := m.SearchInput.Value()
-					m.SearchInput.Reset()
-					m.Table.Focus()
-					m.SearchInput.Blur()
-					m.FocusSearchInput = !m.FocusSearchInput
-					if m.ShowDBInfo {
-						return m, m.DBConfig.searchDBByNameCmd(val)
-					}
-					return m, searchAnimeByNameCmd(val)
-				}
-				return m, getAnimeByIdCmd(m.Table.SelectedRow()[0])
+				return m, searchAnimeByNameCmd(val)
 			}
+			// Replace with navstack ?
+			// return m, getAnimeByIdCmd(m.Table.SelectedRow()[0])
 		}
+		// }
 	}
 	m.Table, cmd = m.Table.Update(msg)
 	m.SearchInput, cmd = m.SearchInput.Update(msg)
 	m.Viewport, cmd = m.Viewport.Update(msg)
-	updatedmenu, cmd := m.ModifyMenu.Update(msg)
-	m.ModifyMenu = updatedmenu.(menu.Model)
+	// updatedmenu, cmd := m.ModifyMenu.Update(msg)
+	// m.ModifyMenu = updatedmenu.(menu.Model)
 	return m, cmd
 }
 
@@ -412,24 +416,24 @@ func (m Model) View() string {
 	}
 
 	render := ""
-	if m.ShowAnimeInfo {
-		render += m.headerView(m.AnimeTitle) + "\n"
-		if m.ShowModifyMenu {
-			render += m.ModifyMenu.View() + "\n"
-		} else {
-			render += m.Viewport.View() + "\n"
-		}
-	} else {
-		render += baseStyle.Render(m.SearchInput.View()) + "\n" + baseStyle.Render(m.Table.View()) + "\n"
-	}
+	// if m.ShowAnimeInfo {
+	// 	render += m.headerView(m.AnimeTitle) + "\n"
+	// 	if m.ShowModifyMenu {
+	// 		render += m.ModifyMenu.View() + "\n"
+	// 	} else {
+	// 		render += m.Viewport.View() + "\n"
+	// 	}
+	// } else {
+	// }
+	render += baseStyle.Render(m.SearchInput.View()) + "\n" + baseStyle.Render(m.Table.View()) + "\n"
 	if m.ShowHelp {
-		if m.ShowModifyMenu {
-			render += m.Help.View(ModifyInfoKeyMap) + "\n"
-		} else if m.ShowAnimeInfo {
-			render += m.Help.View(AnimeInfoKeyMap) + "\n"
-		} else {
-			render += m.Help.View(DefaultKeyMap) + "\n"
-		}
+		// if m.ShowModifyMenu {
+		// 	render += m.Help.View(ModifyInfoKeyMap) + "\n"
+		// } else if m.ShowAnimeInfo {
+		// 	render += m.Help.View(AnimeInfoKeyMap) + "\n"
+		// } else {
+		render += m.Help.View(DefaultKeyMap) + "\n"
+		// }
 	}
 	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, 0, render)
 }

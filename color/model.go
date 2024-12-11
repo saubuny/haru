@@ -1,5 +1,7 @@
 package color
 
+// rename to modify entry
+
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -21,8 +23,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
-			pop := utils.Cmdize(navstack.PopNavigation{})
-			return m, pop
+			// pop := utils.Cmdize(navstack.PopNavigation{})
+			// return m, pop
+			return m, tea.Quit
 		case "enter":
 			pop := utils.Cmdize(navstack.PopNavigation{})
 			selected := utils.Cmdize(ColorSelected{m.RGB})

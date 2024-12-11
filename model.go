@@ -18,11 +18,11 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/saubuny/haru/internal/database"
-	"github.com/saubuny/haru/internal/selector"
-	// "github.com/kevm/bubbleo/menu"
+	"github.com/kevm/bubbleo/menu"
 	// "github.com/kevm/bubbleo/navstack"
-	// "github.com/kevm/bubbleo/shell"
+	"github.com/kevm/bubbleo/shell"
+	"github.com/saubuny/haru/color"
+	"github.com/saubuny/haru/internal/database"
 )
 
 const (
@@ -53,12 +53,14 @@ type Model struct {
 	PreviousRows AnimeListResponse
 
 	// Different bubbles !!
+	Shell       shell.Model
+	ModifyMenu  menu.Model
 	SearchInput textinput.Model
 	Table       table.Model
 	Help        help.Model
 	Viewport    viewport.Model
 
-	// These are for toggling visbility and controls of different bubbles. To be honest, they could be named better :)
+	// These are for toggling visbility and controls of different bubbles. Might not be the best way to do things...
 	ShowModifyMenu   bool
 	FocusSearchInput bool
 	ShowDBInfo       bool
@@ -94,12 +96,28 @@ func initialModel(cfg dbConfig) Model {
 	help := help.New()
 	help.ShowAll = true
 
+	// Perhaps change color based on completion?
+	choices := []menu.Choice{
+		{
+			Title:       Completion,
+			Description: "Change completion status of anime",
+			Model:       color.Model{RGB: "#00FF00", Sample: Completion},
+		},
+		{
+			Title:       StartDate,
+			Description: "Change start date of anime",
+			Model:       color.Model{RGB: "#00FF00", Sample: StartDate},
+		},
+	}
+
 	return Model{
 		Table:       tb,
 		Help:        help,
 		SearchInput: ti,
 		ShowHelp:    true,
 		DBConfig:    cfg,
+		ModifyMenu:  menu.New("Modify Entry", choices, nil),
+		Shell:       shell.New(),
 	}
 }
 
@@ -255,6 +273,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Table.SetColumns(columns)
 		m.Table.SetRows(rows)
 		m.Table.SetCursor(0)
+		return m, nil
 	case AnimeListMessage:
 		// There is a crash if the number of columns differs between both tabs
 		columns := []table.Column{
@@ -272,6 +291,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Table.SetColumns(columns)
 		m.Table.SetRows(rows)
 		m.Table.SetCursor(0)
+		return m, nil
 	case AnimeDataMessage:
 		m.ShowAnimeInfo = true
 		m.AnimeTitle = msg.Data.Title
@@ -279,6 +299,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		content := msg.Data.Synopsis
 		m.Viewport = viewport.New(m.DefaultWidth, m.Table.Height()+4)
 		m.Viewport.SetContent(content)
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.Width = msg.Width
 		m.Height = msg.Height
@@ -289,18 +310,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Table.SetHeight(m.Height - 11)
 		m.SearchInput.Width = m.DefaultWidth / 3
 		m.Viewport.Width = m.DefaultWidth
-	case selector.SelectedMsg:
-		switch msg {
-		case Completion:
-			// TODO: Change to using KevM/bubbleo
-			// Opens up another selector, which will send out its own selected message, which i can check here
-			// return m, modifyCompletion()
-		case StartDate:
-			// Make typing active, look at the search bar for how i did it earlier (although that'd be months ago atp) :3
-			// blah
-		case Watching, PlanToWatch, Completed, OnHold, Dropped:
-			return m, m.modifyCompletion(string(msg))
-		}
+
+		// This thing takes in the whole message for some reason, making it difficult to change the height
+		m.ModifyMenu.SetSize(tea.WindowSizeMsg{
+			Height: msg.Height - 11,
+			Width:  msg.Width,
+		})
+		return m, nil
+	case color.ColorSelected:
+		log.Println(msg.RGB)
+	// case selector.SelectedMsg:
+	// 	switch msg {
+	// 	case Completion:
+	// 		// TODO: Change to using KevM/bubbleo
+	// 		// Opens up another selector, which will send out its own selected message, which i can check here
+	// 		// return m, modifyCompletion()
+	// 	case StartDate:
+	// 		// Make typing active, look at the search bar for how i did it earlier (although that'd be months ago atp) :3
+	// 		// blah
+	// 	case Watching, PlanToWatch, Completed, OnHold, Dropped:
+	// 		return m, m.modifyCompletion(string(msg))
+	// 	}
 	case tea.KeyMsg:
 		// This causes a tiny bit of code duplication, but the separation is worth it
 		if m.ShowAnimeInfo {
@@ -371,6 +401,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.Table, cmd = m.Table.Update(msg)
 	m.SearchInput, cmd = m.SearchInput.Update(msg)
 	m.Viewport, cmd = m.Viewport.Update(msg)
+	updatedmenu, cmd := m.ModifyMenu.Update(msg)
+	m.ModifyMenu = updatedmenu.(menu.Model)
 	return m, cmd
 }
 
@@ -383,10 +415,7 @@ func (m Model) View() string {
 	if m.ShowAnimeInfo {
 		render += m.headerView(m.AnimeTitle) + "\n"
 		if m.ShowModifyMenu {
-			// render += m.ModifySelector.View() + "\n"
-			// if m.CompletionSelector.Active {
-			// 	render += m.CompletionSelector.View() + "\n"
-			// }
+			render += m.ModifyMenu.View() + "\n"
 		} else {
 			render += m.Viewport.View() + "\n"
 		}

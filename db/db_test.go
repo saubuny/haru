@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"reflect"
@@ -7,11 +7,12 @@ import (
 	"github.com/saubuny/haru/internal/database"
 )
 
-// This project only really needs to test the importing logic for the database
+// TODO: ADD MIGRATIONS. i temporarily removed them... whoopsie
 
+// This project only really needs to test the importing logic for the database
 func TestImportMal1(t *testing.T) {
 	// Create test database in memory
-	cfg, err := initDB(migrations, ":memory:")
+	cfg, err := InitDB("", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,16 +62,14 @@ func TestImportMal1(t *testing.T) {
 					<my_start_date>2020-02-05</my_start_date>
 					<my_status>Completed</my_status>
             </anime>
-        </myanimelist>
-    `
-
+        </myanimelist> `
 	// Import to both to DB
-	err = cfg.importMAL([]byte(xml1))
+	err = cfg.ImportMAL([]byte(xml1))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = cfg.importMAL([]byte(xml2))
+	err = cfg.ImportMAL([]byte(xml2))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,32 +1,24 @@
 package main
 
 import (
-	"context"
 	_ "embed"
 	"log"
 	"os"
 	"slices"
 	"strings"
 
-	"github.com/saubuny/haru/internal/database"
-
 	tea "github.com/charmbracelet/bubbletea"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/saubuny/haru/animelist"
+	"github.com/saubuny/haru/db"
 	"github.com/urfave/cli/v2"
-
-	"github.com/kevm/bubbleo/navstack"
 )
-
-type dbConfig struct {
-	DB  *database.Queries
-	Ctx context.Context
-}
 
 //go:embed sql/schema/schema.sql
 var migrations string
 
 func main() {
-	cfg, err := initDB(migrations, "anime.db")
+	cfg, err := db.InitDB(migrations, "anime.db")
 	if err != nil {
 		log.Fatalf("Error initalizing DB: %v", err)
 	}
@@ -39,9 +31,8 @@ func main() {
 		Name:  "Haru",
 		Usage: "Track anime",
 		Action: func(ctx *cli.Context) error {
-			m := initialModel(cfg)
-			m.Shell.Navstack.Push(navstack.NavigationItem{Model: m, Title: "Haru"})
-			p := tea.NewProgram(m.Shell, tea.WithAltScreen())
+			m := animelist.InitialModel(cfg)
+			p := tea.NewProgram(m, tea.WithAltScreen())
 			tea.SetWindowTitle("Haru")
 			if _, err := p.Run(); err != nil {
 				log.Fatalf("Error: %v", err)
@@ -81,9 +72,9 @@ func main() {
 					}
 
 					if strings.ToLower(importPlatform) == "mal" {
-						err = cfg.importMAL(file)
+						err = cfg.ImportMAL(file)
 					} else if strings.ToLower(importPlatform) == "hianime" {
-						err = cfg.importHianime(file)
+						err = cfg.ImportHianime(file)
 					}
 					if err != nil {
 						return err

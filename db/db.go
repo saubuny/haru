@@ -21,7 +21,7 @@ type DBConfig struct {
 
 // TODO: input custom db location (like ~/.haru/anime.db)
 // TODO: have separate table for manga !!
-func initDB(schema string, location string) (DBConfig, error) {
+func InitDB(schema string, location string) (DBConfig, error) {
 	// db, err := sql.Open("sqlite3", ":memory:")
 	db, err := sql.Open("sqlite3", location)
 	if err != nil {
@@ -38,7 +38,7 @@ func initDB(schema string, location string) (DBConfig, error) {
 	return cfg, nil
 }
 
-func (cfg DBConfig) uploadToDB(title string, id int, startDate string, completion string) error {
+func (cfg DBConfig) UploadToDB(title string, id int, startDate string, completion string) error {
 	// Check if ID already exists, create new anime if it does
 	_, err := cfg.DB.GetAnime(cfg.Ctx, int64(id))
 	if err == sql.ErrNoRows {
@@ -74,7 +74,7 @@ func (cfg DBConfig) uploadToDB(title string, id int, startDate string, completio
 
 // Kitsu also exports in the MAL format
 // Kitsu needs to make an HTTP request for EVERY entry. we can use a COOL BUBBLES PROGRESS BAR FOR THAT :fire:
-func (cfg DBConfig) importMAL(malXml []byte) error {
+func (cfg DBConfig) ImportMAL(malXml []byte) error {
 	var animeList types.Myanimelist
 	if err := xml.Unmarshal(malXml, &animeList); err != nil {
 		return err
@@ -92,12 +92,12 @@ func (cfg DBConfig) importMAL(malXml []byte) error {
 			completion = types.OnHold
 		}
 
-		cfg.uploadToDB(anime.SeriesTitle, id, anime.MyStartDate, completion)
+		cfg.UploadToDB(anime.SeriesTitle, id, anime.MyStartDate, completion)
 	}
 
 	return nil
 }
 
-func (cfg DBConfig) importHianime(hiXml []byte) error {
+func (cfg DBConfig) ImportHianime(hiXml []byte) error {
 	return nil
 }

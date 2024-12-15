@@ -1,15 +1,13 @@
 package animelist
 
 import (
-	"fmt"
+	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 	"unicode"
 
 	"encoding/json"
-	"log"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -21,8 +19,6 @@ import (
 	"github.com/saubuny/haru/db"
 	"github.com/saubuny/haru/types"
 
-	"context"
-
 	"github.com/saubuny/haru/internal/database"
 )
 
@@ -32,13 +28,17 @@ type Model struct {
 	width          int
 	height         int
 	cachedTopAnime types.AnimeListResponse
-	dbConfig       db.DBConfig
-	animeTable     table.Model
-	searchInput    textinput.Model
-	help           help.Model
+
+	// This allows us to turn off everything related to this model when we pop it on or off the stack
+	focus bool
+
+	dbConfig    db.DBConfig
+	animeTable  table.Model
+	searchInput textinput.Model
+	help        help.Model
 }
 
-func initialModel(db db.DBConfig) Model {
+func InitialModel(db db.DBConfig) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Insert Peak Here..."
 	ti.Blur()
@@ -176,14 +176,51 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case types.ErrorMsg:
+		log.Fatalf("Error: %v", msg)
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+		// I have no idea what these hardcoded values are or what past me was thinking
+		// Height of help + search bar
+		m.animeTable.SetHeight(m.height - 11)
+		m.searchInput.Width = int(float64(m.width)*0.8) / 3
+		return m, nil
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, AnimeListKeyMap.Exit):
+			return m, tea.Quit
+		case key.Matches(msg, AnimeListKeyMap.Help):
+			// Toggle Help
+			return m, nil
+		case key.Matches(msg, AnimeListKeyMap.Esc):
+			// Toggle Search
+			return m, nil
+		case key.Matches(msg, AnimeListKeyMap.Tab):
+			// Toggle DB and MAL view
+			return m, nil
+		case key.Matches(msg, AnimeListKeyMap.Select):
+			// Either search or open anime info (view navstack)
+			return m, nil
+		}
 	}
 
+	m.animeTable, cmd = m.animeTable.Update(msg)
+	m.searchInput, cmd = m.searchInput.Update(msg)
 	return m, cmd
 }
 
 func (m Model) View() string {
-	return ""
+	if m.width == 0 {
+		return ""
+	}
+	render := ""
+
+	render += baseStyle.Render(m.searchInput.View()) + "\n"
+	render += baseStyle.Render(m.animeTable.View()) + "\n"
+
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, 0, render)
 }

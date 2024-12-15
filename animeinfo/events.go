@@ -1,10 +1,10 @@
 package animeinfo
 
 import (
-	"github.com/saubuny/haru/structs"
+	"github.com/saubuny/haru/types"
 )
 
-type AnimeDataMessage structs.AnimeDataResponse
+type AnimeDataMessage types.AnimeDataResponse
 
 type ColorSelected struct {
 	RGB string

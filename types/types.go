@@ -1,10 +1,10 @@
-package structs
+package types
 
 import (
 	"encoding/xml"
 )
 
-// A central completion type, as other trackers use different wordings, so we cant just use strings
+// A central completion type to convert all formats into
 const (
 	Watching    = "Watching"
 	PlanToWatch = "Plan To Watch"
@@ -13,9 +13,7 @@ const (
 	Dropped     = "Dropped"
 )
 
-type AnimeDataResponse struct {
-	Data AnimeData `json:"data"`
-}
+type ErrorMsg string
 
 type AnimeData struct {
 	MalID  int    `json:"mal_id"`

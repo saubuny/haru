@@ -49,7 +49,7 @@ func (m Model) headerView(name string) string {
 type Model struct {
 	Width        int
 	Height       int
-	AnimeTitle   string
+	AnimeTitle   string // Needed for
 	DefaultWidth int
 	DBConfig     dbConfig
 	PreviousRows AnimeListResponse

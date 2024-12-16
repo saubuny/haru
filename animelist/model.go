@@ -1,8 +1,10 @@
 package animelist
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -28,6 +30,9 @@ type Model struct {
 	width          int
 	height         int
 	cachedTopAnime types.AnimeListResponse
+
+	showHelp   bool
+	showDBList bool
 
 	// This allows us to turn off everything related to this model when we pop it on or off the stack
 	focus bool
@@ -72,6 +77,7 @@ func InitialModel(db db.DBConfig) Model {
 		help:        help,
 		searchInput: ti,
 		dbConfig:    db,
+		showHelp:    true,
 	}
 }
 
@@ -141,9 +147,9 @@ func (m Model) getTopAnime() tea.Msg {
 	return AnimeListMessage(topAnime)
 }
 
-func showDBAnime(db db.DBConfig) tea.Cmd {
+func (m Model) showDBAnime() tea.Cmd {
 	return func() tea.Msg {
-		anime, err := db.DB.GetAllAnime(db.Ctx)
+		anime, err := m.dbConfig.DB.GetAllAnime(m.dbConfig.Ctx)
 		if err != nil {
 			return types.ErrorMsg(err.Error())
 		}
@@ -152,9 +158,9 @@ func showDBAnime(db db.DBConfig) tea.Cmd {
 	}
 }
 
-func searchDBByNameCmd(db db.DBConfig, searchString string) tea.Cmd {
+func (m Model) searchDBByNameCmd(searchString string) tea.Cmd {
 	return func() tea.Msg {
-		fullAnime, err := db.DB.GetAllAnime(db.Ctx)
+		fullAnime, err := m.dbConfig.DB.GetAllAnime(m.dbConfig.Ctx)
 		if err != nil {
 			return types.ErrorMsg(err.Error())
 		}
@@ -189,6 +195,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.animeTable.SetHeight(m.height - 11)
 		m.searchInput.Width = int(float64(m.width)*0.8) / 3
 		return m, nil
+	case AnimeDBListMessage:
+		columns := []table.Column{
+			{Title: "Id", Width: 10},
+			{Title: "Name", Width: 40},
+			{Title: "Completion", Width: 20},
+			{Title: "Start Date", Width: 10},
+		}
+
+		rows := make([]table.Row, 0)
+		for _, anime := range msg {
+			rows = append(rows, table.Row{strconv.Itoa(int(anime.ID)), anime.Title, anime.Completion, anime.Startdate})
+		}
+
+		m.animeTable.SetColumns(columns)
+		m.animeTable.SetRows(rows)
+		m.animeTable.SetCursor(0)
+		return m, nil
+	case AnimeListMessage:
+		// There is a crash if the number of columns differs between both tabs
+		columns := []table.Column{
+			{Title: "Id", Width: 10},
+			{Title: "Name", Width: 40},
+			{Title: "Rating", Width: 30},
+			{Title: "Score", Width: 10},
+		}
+
+		rows := make([]table.Row, 0)
+		for _, anime := range msg.Data {
+			rows = append(rows, table.Row{strconv.Itoa(anime.MalID), anime.Title, anime.Rating, fmt.Sprintf("%v", anime.Score)})
+		}
+
+		m.animeTable.SetColumns(columns)
+		m.animeTable.SetRows(rows)
+		m.animeTable.SetCursor(0)
+		return m, nil
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, AnimeListKeyMap.Exit):
@@ -200,8 +241,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Toggle Search
 			return m, nil
 		case key.Matches(msg, AnimeListKeyMap.Tab):
-			// Toggle DB and MAL view
-			return m, nil
+			// NOTE: should probably not let this be spammed considering http requests are made for the MAL tab
+			m.showDBList = !m.showDBList
+			if !m.showDBList {
+				return m, m.getTopAnime
+			}
+			return m, m.showDBAnime()
 		case key.Matches(msg, AnimeListKeyMap.Select):
 			// Either search or open anime info (view navstack)
 			return m, nil
@@ -221,6 +266,10 @@ func (m Model) View() string {
 
 	render += baseStyle.Render(m.searchInput.View()) + "\n"
 	render += baseStyle.Render(m.animeTable.View()) + "\n"
+
+	if m.showHelp {
+		render += m.help.View(AnimeListKeyMap)
+	}
 
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, 0, render)
 }

@@ -1,14 +1,16 @@
 package navstack
 
 import (
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/saubuny/haru/structs"
 )
 
 // Any model can implement the closable interface for cleanup
 type Closeable interface {
 	Close() error
+}
+
+func New(model tea.Model) Model {
+	return Model{stack: []tea.Model{model}}
 }
 
 // Helper function to easily return messages as a tea.Cmd
@@ -23,23 +25,15 @@ type Model struct {
 }
 
 func (m Model) Init() tea.Cmd {
-	top := m.Top()
-	if top == nil {
+	if m.Top() == nil {
 		return nil
 	}
-
-	return top.Init()
+	return m.Top().Init()
 }
 
 // Pushes an item onto the stack. Performs any cleanup required by the previous top item and renders the new top item.
 func (m *Model) Push(item tea.Model) tea.Cmd {
-	top := m.Top()
-	if top != nil {
-		if c, ok := top.(Closeable); ok {
-			c.Close()
-		}
-	}
-
+	m.stack = append(m.stack, item)
 	return item.Init()
 }
 
@@ -50,10 +44,6 @@ func (m *Model) Pop() tea.Cmd {
 	// Don't do anything if trying to pop off an empty stack
 	if top == nil {
 		return nil
-	}
-
-	if c, ok := top.(Closeable); ok {
-		c.Close()
 	}
 
 	// Do not allow popping off the last item in a stack
@@ -83,11 +73,6 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		return m.Pop()
 	case PushNavigation:
 		return m.Push(msg.Item)
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
-			return tea.Quit
-		}
 	}
 
 	if top == nil {

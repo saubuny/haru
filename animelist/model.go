@@ -18,7 +18,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/saubuny/haru/animeinfo"
 	"github.com/saubuny/haru/db"
+	"github.com/saubuny/haru/navstack"
 	"github.com/saubuny/haru/types"
 
 	"github.com/saubuny/haru/internal/database"
@@ -27,9 +29,8 @@ import (
 var baseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
 
 type Model struct {
-	width          int
-	height         int
-	cachedTopAnime types.AnimeListResponse
+	width  int
+	height int
 
 	showHelp   bool
 	showDBList bool
@@ -81,17 +82,17 @@ func InitialModel(db db.DBConfig) Model {
 	}
 }
 
-func getAnimeById(id string) (AnimeDataResponse, error) {
+func getAnimeById(id string) (types.AnimeDataResponse, error) {
 	c := &http.Client{Timeout: 4 * time.Second}
 	res, err := c.Get("https://api.jikan.moe/v4/anime/" + id)
 	if err != nil {
-		return AnimeDataResponse{}, err
+		return types.AnimeDataResponse{}, err
 	}
 
-	var anime AnimeDataResponse
+	var anime types.AnimeDataResponse
 	err = json.NewDecoder(res.Body).Decode(&anime)
 	if err != nil {
-		return AnimeDataResponse{}, nil
+		return types.AnimeDataResponse{}, nil
 	}
 
 	return anime, nil
@@ -126,12 +127,7 @@ func searchAnimeByNameCmd(searchString string) tea.Cmd {
 }
 
 // TODO: Show spinner on HTTP requests :3
-func (m Model) getTopAnime() tea.Msg {
-	// Show cached results if they've already been saved
-	if m.cachedTopAnime.Data != nil {
-		return AnimeListMessage(m.cachedTopAnime)
-	}
-
+func (m *Model) getTopAnime() tea.Msg {
 	c := &http.Client{Timeout: 4 * time.Second}
 	res, err := c.Get("https://api.jikan.moe/v4/top/anime")
 	if err != nil {
@@ -190,7 +186,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-		// I have no idea what these hardcoded values are or what past me was thinking
 		// Height of help + search bar
 		m.animeTable.SetHeight(m.height - 11)
 		m.searchInput.Width = int(float64(m.width)*0.8) / 3
@@ -267,8 +262,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Use navstack to push anime info model
 			// remember to clean up this model !
-
-			return m, nil
+			return m, navstack.Cmd(navstack.PushNavigation{
+				Item: animeinfo.Model{},
+			})
 		}
 	}
 

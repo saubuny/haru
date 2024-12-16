@@ -15,6 +15,10 @@ const (
 
 type ErrorMsg string
 
+type AnimeDataResponse struct {
+	Data AnimeData `json:"data"`
+}
+
 type AnimeData struct {
 	MalID  int    `json:"mal_id"`
 	URL    string `json:"url"`

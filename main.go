@@ -11,6 +11,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/saubuny/haru/animelist"
 	"github.com/saubuny/haru/db"
+	// "github.com/saubuny/haru/navstack"
 	"github.com/urfave/cli/v2"
 )
 
@@ -32,7 +33,8 @@ func main() {
 		Usage: "Track anime",
 		Action: func(ctx *cli.Context) error {
 			m := animelist.InitialModel(cfg)
-			p := tea.NewProgram(m, tea.WithAltScreen())
+			nav := New(m)
+			p := tea.NewProgram(nav, tea.WithAltScreen())
 			tea.SetWindowTitle("Haru")
 			if _, err := p.Run(); err != nil {
 				log.Fatalf("Error: %v", err)

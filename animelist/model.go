@@ -235,12 +235,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, AnimeListKeyMap.Exit):
 			return m, tea.Quit
 		case key.Matches(msg, AnimeListKeyMap.Help):
-			// Toggle Help
+			m.showHelp = !m.showHelp
 			return m, nil
 		case key.Matches(msg, AnimeListKeyMap.Esc):
-			// Toggle Search
+			if m.searchInput.Focused() {
+				m.searchInput.Blur()
+				m.animeTable.Focus()
+				return m, nil
+			}
+			m.searchInput.Focus()
+			m.animeTable.Blur()
 			return m, nil
-		case key.Matches(msg, AnimeListKeyMap.Tab):
+		case m.animeTable.Focused() && key.Matches(msg, AnimeListKeyMap.Tab):
 			// NOTE: should probably not let this be spammed considering http requests are made for the MAL tab
 			m.showDBList = !m.showDBList
 			if !m.showDBList {
@@ -248,7 +254,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, m.showDBAnime()
 		case key.Matches(msg, AnimeListKeyMap.Select):
-			// Either search or open anime info (view navstack)
+			if m.searchInput.Focused() {
+				val := m.searchInput.Value()
+				m.searchInput.Reset()
+				m.animeTable.Focus()
+				m.searchInput.Blur()
+				if m.showDBList {
+					return m, m.searchDBByNameCmd(val)
+				}
+				return m, searchAnimeByNameCmd(val)
+			}
+
+			// Use navstack to push anime info model
+			// remember to clean up this model !
+
 			return m, nil
 		}
 	}

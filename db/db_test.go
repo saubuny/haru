@@ -3,16 +3,24 @@ package db
 import (
 	"reflect"
 	"testing"
+	"time"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/saubuny/haru/internal/database"
 )
-
-// TODO: ADD MIGRATIONS. i temporarily removed them... whoopsie
 
 // This project only really needs to test the importing logic for the database
 func TestImportMal1(t *testing.T) {
 	// Create test database in memory
-	cfg, err := InitDB("", ":memory:")
+	migrations := `CREATE TABLE IF NOT EXISTS anime (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    startDate TEXT NOT NULL,
+    updatedDate TEXT NOT NULL,
+    completion TEXT NOT NULL
+);`
+
+	cfg, err := InitDB(migrations, ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,28 +88,28 @@ func TestImportMal1(t *testing.T) {
 			ID:          21,
 			Title:       "One Piece",
 			Startdate:   "2024-11-13",
-			Updateddate: "2024-11-13",
+			Updateddate: time.Now().Format("2006-01-02"),
 			Completion:  "Watching",
 		},
 		{
 			ID:          66,
 			Title:       "Azumanga Daiou The Animation",
 			Startdate:   "0000-00-00",
-			Updateddate: "2024-11-13",
+			Updateddate: time.Now().Format("2006-01-02"),
 			Completion:  "Plan To Watch",
 		},
 		{
 			ID:          853,
 			Title:       "Ouran Koukou Host Club",
 			Startdate:   "2022-01-07",
-			Updateddate: "2024-11-13",
+			Updateddate: time.Now().Format("2006-01-02"),
 			Completion:  "Dropped",
 		},
 		{
 			ID:          30276,
 			Title:       "One Punch Man",
 			Startdate:   "2020-02-05",
-			Updateddate: "2024-11-13",
+			Updateddate: time.Now().Format("2006-01-02"),
 			Completion:  "Completed",
 		},
 	}

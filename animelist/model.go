@@ -35,9 +35,6 @@ type Model struct {
 	showHelp   bool
 	showDBList bool
 
-	// This allows us to turn off everything related to this model when we pop it on or off the stack
-	focus bool
-
 	dbConfig    db.DBConfig
 	animeTable  table.Model
 	searchInput textinput.Model
@@ -79,6 +76,7 @@ func InitialModel(db db.DBConfig) Model {
 		searchInput: ti,
 		dbConfig:    db,
 		showHelp:    true,
+		showDBList:  true,
 	}
 }
 
@@ -96,6 +94,16 @@ func getAnimeById(id string) (types.AnimeDataResponse, error) {
 	}
 
 	return anime, nil
+}
+
+func getAnimeByIdCmd(id string) tea.Cmd {
+	return func() tea.Msg {
+		anime, err := getAnimeById(id)
+		if err != nil {
+			return types.ErrorMsg(err.Error())
+		}
+		return types.AnimeDataMessage(anime)
+	}
 }
 
 func searchAnimeByNameCmd(searchString string) tea.Cmd {
@@ -143,15 +151,13 @@ func (m *Model) getTopAnime() tea.Msg {
 	return AnimeListMessage(topAnime)
 }
 
-func (m Model) showDBAnime() tea.Cmd {
-	return func() tea.Msg {
-		anime, err := m.dbConfig.DB.GetAllAnime(m.dbConfig.Ctx)
-		if err != nil {
-			return types.ErrorMsg(err.Error())
-		}
-
-		return AnimeDBListMessage(anime)
+func (m Model) showDBAnime() tea.Msg {
+	anime, err := m.dbConfig.DB.GetAllAnime(m.dbConfig.Ctx)
+	if err != nil {
+		return types.ErrorMsg(err.Error())
 	}
+
+	return AnimeDBListMessage(anime)
 }
 
 func (m Model) searchDBByNameCmd(searchString string) tea.Cmd {
@@ -174,7 +180,7 @@ func (m Model) searchDBByNameCmd(searchString string) tea.Cmd {
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.getTopAnime
+	return m.showDBAnime
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -187,7 +193,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 		// Height of help + search bar
-		m.animeTable.SetHeight(m.height - 11)
+		m.animeTable.SetHeight(m.height - 10)
 		m.searchInput.Width = int(float64(m.width)*0.8) / 3
 		return m, nil
 	case AnimeDBListMessage:
@@ -227,8 +233,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, AnimeListKeyMap.Exit):
-			return m, tea.Quit
 		case key.Matches(msg, AnimeListKeyMap.Help):
 			m.showHelp = !m.showHelp
 			return m, nil
@@ -243,11 +247,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case m.animeTable.Focused() && key.Matches(msg, AnimeListKeyMap.Tab):
 			// NOTE: should probably not let this be spammed considering http requests are made for the MAL tab
+			// Maybe disable tab button while a spinner is active?
+			// Put spinner where the search bar is !! (render it instead)
 			m.showDBList = !m.showDBList
 			if !m.showDBList {
 				return m, m.getTopAnime
 			}
-			return m, m.showDBAnime()
+			return m, m.showDBAnime
 		case key.Matches(msg, AnimeListKeyMap.Select):
 			if m.searchInput.Focused() {
 				val := m.searchInput.Value()
@@ -260,11 +266,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, searchAnimeByNameCmd(val)
 			}
 
-			// Use navstack to push anime info model
-			// remember to clean up this model !
-			return m, navstack.Cmd(navstack.PushNavigation{
-				Item: animeinfo.Model{},
-			})
+			return m, tea.Sequence(
+				navstack.Cmd(navstack.PushNavigation{
+					Item: animeinfo.New(),
+				}),
+				getAnimeByIdCmd(m.animeTable.SelectedRow()[0]),
+			)
 		}
 	}
 

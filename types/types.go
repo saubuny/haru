@@ -15,6 +15,8 @@ const (
 
 type ErrorMsg string
 
+type AnimeDataMessage AnimeDataResponse
+
 type AnimeDataResponse struct {
 	Data AnimeData `json:"data"`
 }

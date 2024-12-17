@@ -7,7 +7,6 @@ import (
 type KeyMap struct {
 	Up     key.Binding
 	Down   key.Binding
-	Exit   key.Binding
 	Select key.Binding
 	Esc    key.Binding
 	Help   key.Binding
@@ -23,7 +22,7 @@ func (km KeyMap) ShortHelp() []key.Binding {
 func (km KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{km.Up, km.Down, km.Esc, km.Tab},
-		{km.Exit, km.Select, km.Help},
+		{km.Select, km.Help},
 	}
 }
 
@@ -35,10 +34,6 @@ var AnimeListKeyMap = KeyMap{
 	Down: key.NewBinding(
 		key.WithKeys("j", "down"),
 		key.WithHelp("↓/j", "move down"),
-	),
-	Exit: key.NewBinding(
-		key.WithKeys("ctrl+c"),
-		key.WithHelp("ctrl+c", "exit"),
 	),
 	Esc: key.NewBinding(
 		key.WithKeys("esc"),

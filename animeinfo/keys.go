@@ -5,17 +5,25 @@ import (
 )
 
 type KeyMap struct {
-	Exit        key.Binding
 	ModifyEntry key.Binding
 	Esc         key.Binding
 	Help        key.Binding
 }
 
+// ShortHelp implements the KeyMap interface.
+func (km KeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{km.Esc, km.ModifyEntry}
+}
+
+// FullHelp implements the KeyMap interface.
+func (km KeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{km.Esc, km.ModifyEntry},
+		{km.Help},
+	}
+}
+
 var AnimeInfoKeyMap = KeyMap{
-	Exit: key.NewBinding(
-		key.WithKeys("ctrl+c"),
-		key.WithHelp("ctrl+c", "exit"),
-	),
 	Esc: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "go back"),

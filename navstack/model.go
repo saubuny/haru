@@ -29,14 +29,14 @@ func (m Model) Init() tea.Cmd {
 // Pushes an item onto the stack. Performs any cleanup required by the previous top item and renders the new top item.
 func (m *Model) Push(item tea.Model) tea.Cmd {
 	m.stack = append(m.stack, item)
-	return item.Init()
+	return tea.Sequence(item.Init(), tea.WindowSize())
 }
 
 // Pops an item off the stack, performs any cleanup required, and renders the new top item. Does not do anything if there is only one item left on the stack.
 func (m *Model) Pop() tea.Cmd {
 	top := m.Top()
 
-	// Don't do anything if trying to pop off an empty stack
+	// Don't do anything if trying to pop off an empty stack (shouldn't be possible anyway)
 	if top == nil {
 		return nil
 	}
@@ -47,9 +47,7 @@ func (m *Model) Pop() tea.Cmd {
 	}
 
 	m.stack = m.stack[:len(m.stack)-1]
-	top = m.Top()
-
-	return top.Init()
+	return nil
 }
 
 // Returns the top item on the stack
@@ -68,6 +66,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.Pop()
 	case PushNavigation:
 		return m, m.Push(msg.Item)
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c":
+			return m, tea.Quit
+		}
 	}
 
 	if top == nil {

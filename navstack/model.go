@@ -4,11 +4,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// Any model can implement the closable interface for cleanup
-type Closeable interface {
-	Close() error
-}
-
 func New(model tea.Model) Model {
 	return Model{stack: []tea.Model{model}}
 }
@@ -66,22 +61,22 @@ func (m Model) Top() tea.Model {
 	return m.stack[len(m.stack)-1]
 }
 
-func (m *Model) Update(msg tea.Msg) tea.Cmd {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	top := m.Top()
 	switch msg := msg.(type) {
 	case PopNavigation:
-		return m.Pop()
+		return m, m.Pop()
 	case PushNavigation:
-		return m.Push(msg.Item)
+		return m, m.Push(msg.Item)
 	}
 
 	if top == nil {
-		return nil
+		return m, nil
 	}
 
 	updatedModel, cmd := top.Update(msg)
 	m.stack[len(m.stack)-1] = updatedModel
-	return cmd
+	return m, cmd
 }
 
 func (m Model) View() string {

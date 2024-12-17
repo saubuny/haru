@@ -32,8 +32,9 @@ type Model struct {
 	width  int
 	height int
 
-	showHelp   bool
-	showDBList bool
+	showHelp    bool
+	showDBList  bool
+	showSpinner bool
 
 	dbConfig    db.DBConfig
 	animeTable  table.Model
@@ -134,7 +135,6 @@ func searchAnimeByNameCmd(searchString string) tea.Cmd {
 	}
 }
 
-// TODO: Show spinner on HTTP requests :3
 func (m *Model) getTopAnime() tea.Msg {
 	c := &http.Client{Timeout: 4 * time.Second}
 	res, err := c.Get("https://api.jikan.moe/v4/top/anime")
@@ -230,6 +230,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.animeTable.SetColumns(columns)
 		m.animeTable.SetRows(rows)
 		m.animeTable.SetCursor(0)
+		m.showSpinner = false
 		return m, nil
 	case tea.KeyMsg:
 		switch {
@@ -245,10 +246,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchInput.Focus()
 			m.animeTable.Blur()
 			return m, nil
-		case m.animeTable.Focused() && key.Matches(msg, AnimeListKeyMap.Tab):
-			// NOTE: should probably not let this be spammed considering http requests are made for the MAL tab
-			// Maybe disable tab button while a spinner is active?
-			// Put spinner where the search bar is !! (render it instead)
+		case !m.showSpinner && m.animeTable.Focused() && key.Matches(msg, AnimeListKeyMap.Tab):
 			m.showDBList = !m.showDBList
 			if !m.showDBList {
 				return m, m.getTopAnime

@@ -1,10 +1,12 @@
 package animeinfo
 
 import (
+	"log"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -25,35 +27,45 @@ func (m Model) headerView(name string) string {
 }
 
 type Model struct {
-	width    int
-	height   int
-	title    string
-	viewport viewport.Model
-	help     help.Model
-	showHelp bool
+	width       int
+	height      int
+	title       string
+	viewport    viewport.Model
+	help        help.Model
+	spinner     spinner.Model
+	showSpinner bool
+	showHelp    bool
 }
 
 func New() Model {
 	help := help.New()
 	help.ShowAll = true
+	s := spinner.New()
+	s.Spinner = spinner.Points
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 	return Model{
-		help:     help,
-		viewport: viewport.New(0, 0),
-		showHelp: true,
+		help:        help,
+		viewport:    viewport.New(0, 0),
+		showHelp:    true,
+		spinner:     s,
+		showSpinner: true,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.spinner.Tick
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case types.ErrorMsg:
+		log.Fatalf("Error: %v", msg)
 	case types.AnimeDataMessage:
 		m.title = msg.Data.Title
 		content := msg.Data.Synopsis
 		m.viewport.SetContent(content)
+		m.showSpinner = false
 		return m, nil
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -77,6 +89,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.viewport, cmd = m.viewport.Update(msg)
+	m.spinner, cmd = m.spinner.Update(msg)
 	return m, cmd
 }
 
@@ -86,8 +99,14 @@ func (m Model) View() string {
 	}
 
 	render := ""
+	if m.showSpinner {
+		render = m.spinner.View()
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, render)
+	}
+
 	render += m.headerView(m.title) + "\n"
 	render += m.viewport.View() + "\n"
+
 	if m.showHelp {
 		render += m.help.View(AnimeInfoKeyMap)
 	}

@@ -4,7 +4,8 @@ import (
 	"encoding/xml"
 )
 
-// A central completion type to convert all formats into
+// Holds central data types and messages
+
 const (
 	Watching    = "Watching"
 	PlanToWatch = "Plan To Watch"

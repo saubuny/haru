@@ -1,5 +1,7 @@
 package navstack
 
+// This is a little overkill since we only ever go like 3 layers deep but its fine :)
+
 import (
 	tea "github.com/charmbracelet/bubbletea"
 )

@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,12 +28,15 @@ func (m Model) headerView(name string) string {
 }
 
 type Model struct {
-	width       int
-	height      int
-	title       string
-	viewport    viewport.Model
-	help        help.Model
-	spinner     spinner.Model
+	width  int
+	height int
+	title  string
+
+	help               help.Model
+	viewport           viewport.Model
+	spinner            spinner.Model
+	completionSelector list.Model
+
 	showSpinner bool
 	showHelp    bool
 }
@@ -40,9 +44,14 @@ type Model struct {
 func New() Model {
 	help := help.New()
 	help.ShowAll = true
+
 	s := spinner.New()
 	s.Spinner = spinner.Points
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+
+	items := []list.Item{}
+	sel := list.New(items, list.DefaultDelegate{}, 0, len(items))
+
 	return Model{
 		help:        help,
 		viewport:    viewport.New(0, 0),
@@ -72,6 +81,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.viewport.Width = int(float64(m.width) * 0.8)
 		m.viewport.Height = m.height - 6
+		m.completionSelector.SetWidth(m.width / 2)
 		return m, nil
 	case tea.KeyMsg:
 		switch {
@@ -84,6 +94,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, AnimeInfoKeyMap.ModifyEntry):
 			m.viewport.SetContent("fuck")
 			// Push Modify Menu to stack
+			// Actually, have two separate controls for whether to change date or completion status !! that would be far better. perhaps d and c ? put it in the keymapping
+			// use a list bubble for completion and textinput bubble for date. verify the validity of the date. render either instead of the viewport. try to center it in the view.
+
+			// Would be best to render this on top. i'll to figure out how to do that.
 			return m, nil
 		}
 	}
@@ -106,6 +120,7 @@ func (m Model) View() string {
 
 	render += m.headerView(m.title) + "\n"
 	render += m.viewport.View() + "\n"
+	// lipgloss.WithWhitespaceChars() maybe this can be used?
 
 	if m.showHelp {
 		render += m.help.View(AnimeInfoKeyMap)

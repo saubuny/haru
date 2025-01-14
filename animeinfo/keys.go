@@ -5,20 +5,19 @@ import (
 )
 
 type KeyMap struct {
-	ModifyEntry key.Binding
-	Esc         key.Binding
-	Help        key.Binding
+	Esc  key.Binding
+	Help key.Binding
 }
 
 // ShortHelp implements the KeyMap interface.
 func (km KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Esc, km.ModifyEntry}
+	return []key.Binding{km.Esc, km.Help}
 }
 
 // FullHelp implements the KeyMap interface.
 func (km KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Esc, km.ModifyEntry},
+		{km.Esc},
 		{km.Help},
 	}
 }
@@ -31,9 +30,5 @@ var AnimeInfoKeyMap = KeyMap{
 	Help: key.NewBinding(
 		key.WithKeys("?"),
 		key.WithHelp("?", "toggle help"),
-	),
-	ModifyEntry: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "modify entry"),
 	),
 }

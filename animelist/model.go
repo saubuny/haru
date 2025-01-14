@@ -13,6 +13,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,6 +27,8 @@ import (
 	"github.com/saubuny/haru/internal/database"
 )
 
+// Completion selector will be on this page. pressing c will open the popup and pressing s will open the start date entry. you can press d to delete an entry (a confirmation popup will show). the selector will be pushed to the
+
 var baseStyle = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240"))
 
 type Model struct {
@@ -36,10 +39,11 @@ type Model struct {
 	showDBList  bool
 	showSpinner bool
 
-	dbConfig    db.DBConfig
-	animeTable  table.Model
-	searchInput textinput.Model
-	help        help.Model
+	dbConfig           db.DBConfig
+	animeTable         table.Model
+	searchInput        textinput.Model
+	help               help.Model
+	completionSelector list.Model
 }
 
 func InitialModel(db db.DBConfig) Model {
@@ -70,6 +74,9 @@ func InitialModel(db db.DBConfig) Model {
 
 	help := help.New()
 	help.ShowAll = true
+
+	// items := []list.Item{}
+	// sel := list.New(items, list.DefaultDelegate{}, 0, len(items))
 
 	return Model{
 		animeTable:  tb,
